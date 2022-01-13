@@ -1,5 +1,6 @@
 import telebot
 from telebot import types
+import sqlite3
 
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -15,6 +16,20 @@ if rem_bot:
 else:
     print('Ошибка запуска.')
 
+# Инициализация
+# Подключение к БД
+try:
+    connection = sqlite3.connect('users_data.db')
+    cursor = connection.cursor()
+    query = ''
+    cursor.execute(query)
+    answer = cursor.fetchall() # получение данных из запроса qwery
+    cursor.close()
+    connection.close()
+    print('Отработало')
+except sqlite3.Error as erorr:
+    print(f'Ошибка:{erorr}')
+
 # Написать блок инициализации
 # Подключение к БД, создание курсора
 # Проверка базы на старые, просроченные события и их удаление.
@@ -24,7 +39,7 @@ else:
 def start(messege):
     rem_bot.send_message(messege.chat.id, 'Привет! Это бот - напоминалка\n' +
                          'Для взаимодействия используйте кнопки снизу\n' +
-                         'Вызов помощи "\help"')
+                         'Вызов помощи "/help"')
 
     # получение информации о пользователе запустившем бот.
     user_info = {'id' : messege.from_user.id,
