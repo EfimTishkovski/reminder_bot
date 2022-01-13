@@ -29,6 +29,8 @@ def start(messege):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
     btn_my_event = types.KeyboardButton('Показать мои события')  # Кнопка просмотра активных событий пользователя
+    markup.add(btn_create_event, btn_my_event)
+    rem_bot.reply_to(messege, 'Кнопки появятся ниже', reply_markup=markup)
 
 # Функация принятия сообщения от пользователя(реакция нажатия на кнопки)
 @rem_bot.message_handler(func=lambda messege: True)
@@ -36,6 +38,8 @@ def comand_to_bot(messege):
     # Проверка типа сообщения
     if messege.chat.type == 'private':
         if messege.text == 'Добавить событие':
-            pass
+            rem_bot.send_message(messege.chat.id, 'Добавить событие')
         elif messege.text == 'Показать мои события':
-            pass
+            rem_bot.send_message(messege.chat.id, 'Показать мои события')
+
+rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
