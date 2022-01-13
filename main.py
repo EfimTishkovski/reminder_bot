@@ -25,6 +25,13 @@ def start(messege):
     rem_bot.send_message(messege.chat.id, 'Привет! Это бот - напоминалка\n' +
                          'Для взаимодействия используйте кнопки снизу\n' +
                          'Вызов помощи "\help"')
+
+    # получение информации о пользователе запустившем бот.
+    user_info = {'id' : messege.from_user.id,
+                 'Имя' : messege.from_user.first_name,
+                 'Имя пользователя' : messege.from_user.username}
+
+    print(user_info)
     # Создание кнопок интерфейса бота
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
@@ -41,5 +48,6 @@ def comand_to_bot(messege):
             rem_bot.send_message(messege.chat.id, 'Добавить событие')
         elif messege.text == 'Показать мои события':
             rem_bot.send_message(messege.chat.id, 'Показать мои события')
+
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
