@@ -16,23 +16,23 @@ if rem_bot:
 else:
     print('Ошибка запуска.')
 
-# Инициализация
-# Подключение к БД
-try:
-    connection = sqlite3.connect('users_data.db')
-    cursor = connection.cursor()
-    query = ''
-    cursor.execute(query)
-    answer = cursor.fetchall() # получение данных из запроса qwery
-    cursor.close()
-    connection.close()
-    print('Отработало')
-except sqlite3.Error as erorr:
-    print(f'Ошибка:{erorr}')
+# Как вариант написать файлик back
+# запихнуть туда функцию подключения к базе, действие передавать
+# в аргумент функцией
 
-# Написать блок инициализации
-# Подключение к БД, создание курсора
-# Проверка базы на старые, просроченные события и их удаление.
+# Инициализация
+# Подключение к БД и проверка на старые и просроченные события
+    try:
+        connection_ini = sqlite3.connect('users_data.db')
+        cursor_ini = connection_ini.cursor()
+        query_search = ''
+        cursor_ini.execute(query_search)
+        answer_ini = cursor_ini.fetchall()  # получение данных из запроса query
+        cursor_ini.close()
+        connection_ini.close()
+        print('Отработало')
+    except sqlite3.Error as erorr:
+        print(f'Ошибка:{erorr}')
 
 # Функция приветствия, старта. И краткая инструкция.
 @rem_bot.message_handler(commands=['start'])
@@ -45,6 +45,20 @@ def start(messege):
     user_info = {'id' : messege.from_user.id,
                  'Имя' : messege.from_user.first_name,
                  'Имя пользователя' : messege.from_user.username}
+    # Проверка на наличие пользователя в базе
+    # Есть - хорошо, нету - добавить.
+    try:
+        connection = sqlite3.connect('users_data.db')
+        cursor = connection.cursor()
+        query = ''
+        cursor.execute(query)
+        answer = cursor.fetchall()  # получение данных из запроса query
+        cursor.close()
+        connection.close()
+        print('Отработало')
+    except sqlite3.Error as erorr:
+        print(f'Ошибка:{erorr}')
+        rem_bot.send_message(messege.chat.id, 'Барахлит база(')
 
     print(user_info)
     # Создание кнопок интерфейса бота
