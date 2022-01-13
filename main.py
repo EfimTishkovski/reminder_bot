@@ -1,6 +1,7 @@
 import telebot
 from telebot import types
 import sqlite3
+from back import *
 
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -47,18 +48,12 @@ def start(messege):
                  'Имя пользователя' : messege.from_user.username}
     # Проверка на наличие пользователя в базе
     # Есть - хорошо, нету - добавить.
-    try:
-        connection = sqlite3.connect('users_data.db')
-        cursor = connection.cursor()
-        query = ''
-        cursor.execute(query)
-        answer = cursor.fetchall()  # получение данных из запроса query
-        cursor.close()
-        connection.close()
-        print('Отработало')
-    except sqlite3.Error as erorr:
-        print(f'Ошибка:{erorr}')
-        rem_bot.send_message(messege.chat.id, 'Барахлит база(')
+    query_user_in_base = f"SELECT [id] FROM 'users' WHERE [id] = {user_info['id']}" # Запрос на поиск id пользователя
+    # Функция абработки результата
+    def check_user():
+        pass
+    base_query(check_user(), query_user_in_base)
+
 
     print(user_info)
     # Создание кнопок интерфейса бота
