@@ -70,6 +70,7 @@ def comand_to_bot(messege):
     if messege.chat.type == 'private':
         if messege.text == 'Добавить событие':
             rem_bot.send_message(messege.chat.id, 'Добавить событие')
+            # Написать функцию создания события
         elif messege.text == 'Показать мои события':
             #rem_bot.send_message(messege.chat.id, 'Показать мои события')
             user = messege.from_user.id                                      # получаем имя пользователя
@@ -82,6 +83,7 @@ def comand_to_bot(messege):
                 rem_bot.send_message(messege.chat.id, 'Записей нет.')
         elif messege.text == 'Редактировать события':
             rem_bot.send_message(messege.chat.id, 'Тут будет сложный код =)')
+            # Дописать сложный код редактирования событий
 
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
