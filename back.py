@@ -5,7 +5,7 @@ import sqlite3
 # Если функция выполняет поиск, то возвращаются его результаты
 # mode='search'
 # Если запись или удаление, то True при успешной отработке
-def base_query(query=''):
+def base_query(query='', mode=''):
     try:
         connection = sqlite3.connect('users_data.db')
         cursor = connection.cursor()
@@ -14,8 +14,10 @@ def base_query(query=''):
         cursor.close()
         connection.commit()
         connection.close()
-
-        return answer
+        if mode == 'search':
+            return answer
+        else:
+            return True
     except sqlite3.Error as erorr:
         print(f'Ошибка:{erorr}')
         return None

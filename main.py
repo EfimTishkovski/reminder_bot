@@ -1,6 +1,7 @@
 import telebot
 from telebot import types
 import sqlite3
+import datetime
 from back import *
 
 # Получение токена
@@ -34,25 +35,25 @@ def start(messege):
                          'Вызов помощи "/help"')
 
     # получение информации о пользователе запустившем бот.
+    date = datetime.datetime.fromtimestamp(messege.date).strftime('%Y-%m-%d %H:%M:%S') # Время в человеческом формате
     user_info = {'id' : messege.from_user.id,
                  'Имя' : messege.from_user.first_name,
-                 'Имя пользователя' : messege.from_user.username}
+                 'Имя пользователя' : messege.from_user.username,
+                 'Дата' : date}
     # Проверка на наличие пользователя в базе
     # Есть - хорошо, нету - добавить.
     query_user_in_base = f"SELECT * FROM 'users' WHERE [id] = {user_info['id']}" # Запрос на поиск id пользователя
-    #Обработка результата
-    if base_query(query_user_in_base):
-        print('Пользователь есть в базе')
+    if base_query(query_user_in_base, mode='search'):
+        rem_bot.send_message(messege.chat.id, f"Привет, {user_info['Имя']}, я помню тебя.")
     else:
-        print('Пользователя нет в базе, нужно добавить!')
-        # Дописать функцию добавления пользователя в базу
+        # Добавление пользователя в базу
+        rem_bot.send_message(messege.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
         query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
-                            f"VALUES ('{user_info['id']}','{user_info['Имя']}','{user_info['Имя пользователя']}');"
-        base_query()
+                            f"VALUES ('{user_info['id']}','{user_info['Имя']}','{user_info['Имя пользователя']}','{user_info['Дата']}');"
+        if base_query(query_user_insert):
+            print('Добавлен новый пользователь')
+    user_info.clear() # Очистка словаря с данными пользователя
 
-
-    # Проверка на наличие пользователя в базе
-    #print(base_query(check_user, query_user_in_base))
     # Создание кнопок интерфейса бота
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
