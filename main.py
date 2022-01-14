@@ -55,12 +55,13 @@ def start(messege):
     user_info.clear() # Очистка словаря с данными пользователя
 
     # Создание кнопок интерфейса бота
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)        # Создание объекта клавиатура
     btn_create_event = types.KeyboardButton('Добавить событие')     # Кнопка создания нового события
     btn_my_event = types.KeyboardButton('Показать мои события')     # Кнопка просмотра активных событий пользователя
     btn_event_edit = types.KeyboardButton('Редактировать события')  # Кнопка редактирования активных событий пользователя
-    markup.add(btn_create_event, btn_my_event, btn_event_edit)
-    rem_bot.reply_to(messege, 'Кнопки появятся ниже', reply_markup=markup)
+    markup.row(btn_create_event, btn_my_event)          # Добавление кнопок в первый ряд
+    markup.row(btn_event_edit)                          # Добавление кнопок во второй ряд
+    rem_bot.send_message(messege.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
 
 # Функация принятия сообщения от пользователя(реакция нажатия на кнопки)
 @rem_bot.message_handler(func=lambda messege: True)
@@ -74,14 +75,13 @@ def comand_to_bot(messege):
             user = messege.from_user.id                                      # получаем имя пользователя
             query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
             user_events = base_query(query, mode='search')
-            if user_events: # Запрос на поиск id пользователя
+            if user_events:
                 print(user_events)
             else:
                 print('Записей нет.')
                 rem_bot.send_message(messege.chat.id, 'Записей нет.')
         elif messege.text == 'Редактировать события':
             rem_bot.send_message(messege.chat.id, 'Тут будет сложный код =)')
-
 
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
