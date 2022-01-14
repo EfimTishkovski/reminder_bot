@@ -23,17 +23,6 @@ else:
 
 # Инициализация
 # Подключение к БД и проверка на старые и просроченные события
-    try:
-        connection_ini = sqlite3.connect('users_data.db')
-        cursor_ini = connection_ini.cursor()
-        query_search = ''
-        cursor_ini.execute(query_search)
-        answer_ini = cursor_ini.fetchall()  # получение данных из запроса query
-        cursor_ini.close()
-        connection_ini.close()
-        print('Отработало')
-    except sqlite3.Error as erorr:
-        print(f'Ошибка:{erorr}')
 
 # Функция приветствия, старта. И краткая инструкция.
 @rem_bot.message_handler(commands=['start'])
@@ -48,14 +37,18 @@ def start(messege):
                  'Имя пользователя' : messege.from_user.username}
     # Проверка на наличие пользователя в базе
     # Есть - хорошо, нету - добавить.
-    query_user_in_base = f"SELECT [id] FROM 'users' WHERE [id] = {user_info['id']}" # Запрос на поиск id пользователя
-    # Функция абработки результата
-    def check_user():
-        pass
-    base_query(check_user(), query_user_in_base)
-
-
-    print(user_info)
+    query_user_in_base = f"SELECT * FROM 'users' WHERE [id] = {user_info['id']}" # Запрос на поиск id пользователя
+    #Функция абработки результата
+    def check_user(mass):
+        #print(user_info)
+        #print(mass)
+        if mass:
+            print('Пользователь есть в базе')
+        else:
+            print('Пользователя нет в базе, нужно добавить!')
+            # Дописать функцию добавления пользователя в базу
+    # Проверка на наличие пользователя в базе
+    base_query(check_user, query_user_in_base)
     # Создание кнопок интерфейса бота
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
