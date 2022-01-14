@@ -56,9 +56,10 @@ def start(messege):
 
     # Создание кнопок интерфейса бота
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
-    btn_my_event = types.KeyboardButton('Показать мои события')  # Кнопка просмотра активных событий пользователя
-    markup.add(btn_create_event, btn_my_event)
+    btn_create_event = types.KeyboardButton('Добавить событие')     # Кнопка создания нового события
+    btn_my_event = types.KeyboardButton('Показать мои события')     # Кнопка просмотра активных событий пользователя
+    btn_event_edit = types.KeyboardButton('Редактировать события')  # Кнопка редактирования активных событий пользователя
+    markup.add(btn_create_event, btn_my_event, btn_event_edit)
     rem_bot.reply_to(messege, 'Кнопки появятся ниже', reply_markup=markup)
 
 # Функация принятия сообщения от пользователя(реакция нажатия на кнопки)
@@ -69,7 +70,18 @@ def comand_to_bot(messege):
         if messege.text == 'Добавить событие':
             rem_bot.send_message(messege.chat.id, 'Добавить событие')
         elif messege.text == 'Показать мои события':
-            rem_bot.send_message(messege.chat.id, 'Показать мои события')
+            #rem_bot.send_message(messege.chat.id, 'Показать мои события')
+            user = messege.from_user.id                                      # получаем имя пользователя
+            query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+            user_events = base_query(query, mode='search')
+            if user_events: # Запрос на поиск id пользователя
+                print(user_events)
+            else:
+                print('Записей нет.')
+                rem_bot.send_message(messege.chat.id, 'Записей нет.')
+        elif messege.text == 'Редактировать события':
+            rem_bot.send_message(messege.chat.id, 'Тут будет сложный код =)')
+
 
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
