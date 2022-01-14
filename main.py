@@ -1,6 +1,5 @@
 import telebot
 from telebot import types
-import sqlite3
 import datetime
 from back import *
 
@@ -34,7 +33,7 @@ def start(messege):
                          'Для взаимодействия используйте кнопки снизу\n' +
                          'Вызов помощи "/help"')
 
-    # получение информации о пользователе запустившем бот.
+    # Получение информации о пользователе запустившем бот.
     date = datetime.datetime.fromtimestamp(messege.date).strftime('%Y-%m-%d %H:%M:%S') # Время в человеческом формате
     user_info = {'id' : messege.from_user.id,
                  'Имя' : messege.from_user.first_name,
@@ -49,7 +48,8 @@ def start(messege):
         # Добавление пользователя в базу
         rem_bot.send_message(messege.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
         query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
-                            f"VALUES ('{user_info['id']}','{user_info['Имя']}','{user_info['Имя пользователя']}','{user_info['Дата']}');"
+                            f"VALUES ('{user_info['id']}','{user_info['Имя']}'," \
+                            f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
         if base_query(query_user_insert):
             print('Добавлен новый пользователь')
     user_info.clear() # Очистка словаря с данными пользователя
