@@ -69,7 +69,9 @@ def comand_to_bot(messege):
     # Проверка типа сообщения
     if messege.chat.type == 'private':
         if messege.text == 'Добавить событие':
-            rem_bot.send_message(messege.chat.id, 'Добавить событие')
+            #rem_bot.send_message(messege.chat.id, 'Добавить событие')
+            event_from_user(messege)
+
             # Написать функцию создания события
         elif messege.text == 'Показать мои события':
             #rem_bot.send_message(messege.chat.id, 'Показать мои события')
@@ -85,5 +87,32 @@ def comand_to_bot(messege):
             rem_bot.send_message(messege.chat.id, 'Тут будет сложный код =)')
             # Дописать сложный код редактирования событий
 
+# Функция получения события от пользователя
+temp_event = {}
+def event_from_user(messege):
+    mess = rem_bot.send_message(messege.chat.id, 'Название события')
+    rem_bot.register_next_step_handler(mess, event_name_func)
+
+# Функция получения названия события
+def event_name_func(messege):
+    temp_event['name'] = messege.text
+    mess1 = rem_bot.send_message(messege.chat.id, 'Дата события в формате: ГГГГ-ММ-ДД')
+    rem_bot.register_next_step_handler(mess1, event_date_func)
+
+# Функция получения даты события
+def event_date_func(messege):
+    temp_event['date'] = messege.text
+    mess2 = rem_bot.send_message(messege.chat.id, 'Время события в фотмате: ЧЧ-ММ')
+    rem_bot.register_next_step_handler(mess2, event_time_func)
+
+# Функция получения времени события
+def event_time_func(messege):
+    temp_event['time'] = messege.text
+    rem_bot.send_message(messege.chat.id, 'Событие создано!')
+    rem_bot.send_message(messege.chat.id, 'Событие: ' + temp_event['name'] + '\n' +
+                         'Дата: ' + temp_event['date'] + '\n' +
+                         'Время: ' + temp_event['time'])
+    print(temp_event)
+    temp_event.clear()
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
