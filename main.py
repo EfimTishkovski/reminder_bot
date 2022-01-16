@@ -113,17 +113,18 @@ def event_time_func(messege):
     temp_event['Имя'] = messege.from_user.first_name
     temp_event['Имя пользователя'] = messege.from_user.username
     temp_event['id'] = messege.from_user.id
-    #print(temp_event)
+    # Запись события в базу
     write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
                                 f"VALUES ('{temp_event['id']}','{temp_event['Имя']}','{temp_event['Имя пользователя']}'," \
                                 f"'{temp_event['date'] + '' +  '' + temp_event['time']}','{temp_event['name']}');"
     write_event = base_query(write_event_to_base_query)
+    # Проверка корректности тоработки функции
     if write_event is not None:
         print('Событие добавлено успешно')
         rem_bot.send_message(messege.chat.id, 'Событие добавлено.')
     else:
         print('Ошибка записи')
         rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
-    temp_event.clear()
+    temp_event.clear() # Очистка временного массива с данными о событии
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
