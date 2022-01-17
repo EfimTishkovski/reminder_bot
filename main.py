@@ -50,18 +50,49 @@ async def welcome(message:types.Message):
             print('Добавлен новый пользователь')
     user_info.clear()  # Очистка словаря с данными пользователя
 
+    # Создание кнопок интерфейса бота
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)  # Создание объекта клавиатура
+    btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
+    btn_my_event = types.KeyboardButton('Показать мои события')  # Кнопка просмотра активных событий пользователя
+    btn_event_edit = types.KeyboardButton('Редактировать события') # Кнопка редактирования активных событий пользователя
+    markup.row(btn_create_event, btn_my_event)  # Добавление кнопок в первый ряд
+    markup.row(btn_event_edit)  # Добавление кнопок во второй ряд
+    await rem_bot.send_message(message.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
+
+# Функация принятия сообщения от пользователя(реакция нажатия на кнопки)
+@disp.message_handler()
+async def comand_to_bot(message:types.Message):
+    # Проверка типа сообщения
+    if message.chat.type == 'private':
+        if message.text == 'Добавить событие':
+            #event_from_user(messege)
+            await rem_bot.send_message(message.chat.id, 'Новое событие')
+            # Написать функцию создания события
+        elif message.text == 'Показать мои события':
+            user = message.from_user.id                                      # получаем имя пользователя
+            query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+            user_events = base_query(query, mode='search')
+            if user_events:
+                print(user_events)
+            else:
+                print('Записей нет.')
+                await rem_bot.send_message(message.chat.id, 'Записей нет.')
+        elif message.text == 'Редактировать события':
+            await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
+            # Дописать сложный код редактирования событий
+
 # Фоновая функция
 async def cickle_func():
-    print('Запуск')
-    for i in range(10):
-        print('Работаем', i)
-        await asyncio.sleep(0.1)
-    print('Всё! Отработали.')
+    print('Запуск фоновой функции')
+    while True:
+        print('Фоновая функция работает')
+        await asyncio.sleep(5)
+
 
 
 if __name__ == '__main__':
     disp.loop.create_task(cickle_func())
-    executor.start_polling(disp,skip_updates=True)
+    executor.start_polling(disp, skip_updates=True)
 
 
 """
