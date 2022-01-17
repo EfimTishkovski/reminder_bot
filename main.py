@@ -128,3 +128,4 @@ def event_time_func(messege):
     temp_event.clear() # Очистка временного массива с данными о событии
 
 rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
+# Новый комент
