@@ -1,26 +1,24 @@
 import asyncio
 
 from aiogram import Bot, Dispatcher, executor, types
-import datetime
 import time
 from back import *
-
+import datetime
 # Получение токена
 tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
 tok.close()
 
 # Инициализация бота
-rem_bot = Bot(token=TOKEN)
-loop = asyncio.get_event_loop()
-disp = Dispatcher(rem_bot, loop=loop)
-
+rem_bot = Bot(token=TOKEN)            # Создание экземпляра бота
+loop = asyncio.get_event_loop()       # Создание цикла
+disp = Dispatcher(rem_bot, loop=loop) # Добавление цикла в диспетчер,
+                                      # Он запустит полинг и цикл с нашей функцией параллельно.
+# Информационное сообщение в консоль
 if rem_bot:
     print('Запущено.')
 else:
     print('Ошибка запуска.')
-
-
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
@@ -29,11 +27,20 @@ async def welcome(message:types.Message):
                                             'Для взаимодействия используйте кнопки снизу\n' +
                                             'Вызов помощи "/help"')
 
+    # Получение информации о пользователе запустившем бот.
+    date = message.date.strftime('%Y-%m-%d %H:%M:%S')
+    user_info = {'id': message.from_user.id,
+                 'Имя': message.from_user.first_name,
+                 'Имя пользователя': message.from_user.username,
+                 'Дата': date}
+    print(user_info)
+
+# Фоновая функция
 async def cickle_func():
     print('Запуск')
-    for i in range(10):
+    for i in range(20):
         print('Работаем', i)
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
     print('Всё! Отработали.')
 
 
