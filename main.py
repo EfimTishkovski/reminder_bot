@@ -1,5 +1,8 @@
+import asyncio
+
 from aiogram import Bot, Dispatcher, executor, types
 import datetime
+import time
 from back import *
 
 # Получение токена
@@ -9,12 +12,15 @@ tok.close()
 
 # Инициализация бота
 rem_bot = Bot(token=TOKEN)
-disp = Dispatcher(rem_bot)
+loop = asyncio.get_event_loop()
+disp = Dispatcher(rem_bot, loop=loop)
 
 if rem_bot:
     print('Запущено.')
 else:
     print('Ошибка запуска.')
+
+
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
@@ -23,8 +29,17 @@ async def welcome(message:types.Message):
                                             'Для взаимодействия используйте кнопки снизу\n' +
                                             'Вызов помощи "/help"')
 
+async def cickle_func():
+    print('Запуск')
+    for i in range(10):
+        print('Работаем', i)
+        await asyncio.sleep(1)
+    print('Всё! Отработали.')
+
+
 if __name__ == '__main__':
-    executor.start_polling(disp, skip_updates=True)
+    disp.loop.create_task(cickle_func())
+    executor.start_polling(disp,skip_updates=True)
 
 
 """
