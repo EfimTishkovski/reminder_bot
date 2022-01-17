@@ -1,5 +1,4 @@
-import telebot
-from telebot import types
+from aiogram import Bot, Dispatcher, executor, types
 import datetime
 from back import *
 
@@ -8,6 +7,28 @@ tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
 tok.close()
 
+# Инициализация бота
+rem_bot = Bot(token=TOKEN)
+disp = Dispatcher(rem_bot)
+
+if rem_bot:
+    print('Запущено.')
+else:
+    print('Ошибка запуска.')
+
+# Стартовое сообщение
+@disp.message_handler(commands=['start'])
+async def welcome(message:types.Message):
+    await rem_bot.send_message(message.chat.id, 'Привет! Это бот - напоминалка\n' +
+                                            'Для взаимодействия используйте кнопки снизу\n' +
+                                            'Вызов помощи "/help"')
+
+if __name__ == '__main__':
+    executor.start_polling(disp, skip_updates=True)
+
+
+"""
+Старый код c pytelegramBotAPI
 # Создание экземпляра бота и подключение токена
 rem_bot = telebot.TeleBot(TOKEN)
 
@@ -127,5 +148,5 @@ def event_time_func(messege):
         rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
     temp_event.clear() # Очистка временного массива с данными о событии
 
-rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
-# Новый комент
+# Опрос сервера, не написал ли кто-нибудь?"""
+#rem_bot.polling(none_stop=True, interval=0)
