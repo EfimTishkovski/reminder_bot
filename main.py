@@ -1,6 +1,7 @@
 import telebot
 from telebot import types
 import datetime
+import time
 from back import *
 
 # Получение токена
@@ -127,4 +128,7 @@ def event_time_func(messege):
         rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
     temp_event.clear() # Очистка временного массива с данными о событии
 
-rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
+
+rem_bot.polling(interval=1)       # Опрос сервера, не написал ли кто-нибудь?
+#rem_bot.stop_polling()
+
