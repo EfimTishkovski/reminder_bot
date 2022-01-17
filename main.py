@@ -35,12 +35,27 @@ async def welcome(message:types.Message):
                  'Дата': date}
     print(user_info)
 
+    # Проверка на наличие пользователя в базе
+    # Есть - хорошо, нету - добавить.
+    query_user_in_base = f"SELECT * FROM 'users' WHERE [id] = {user_info['id']}"  # Запрос на поиск id пользователя
+    if base_query(query_user_in_base, mode='search'):
+        await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я помню тебя.")
+    else:
+        # Добавление пользователя в базу
+        await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
+        query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
+                            f"VALUES ('{user_info['id']}','{user_info['Имя']}'," \
+                            f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
+        if base_query(query_user_insert):
+            print('Добавлен новый пользователь')
+    user_info.clear()  # Очистка словаря с данными пользователя
+
 # Фоновая функция
 async def cickle_func():
     print('Запуск')
-    for i in range(20):
+    for i in range(10):
         print('Работаем', i)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
     print('Всё! Отработали.')
 
 
