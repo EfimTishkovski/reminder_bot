@@ -1,13 +1,56 @@
-import telebot
-from telebot import types
-import datetime
-from back import *
+import asyncio
 
+from aiogram import Bot, Dispatcher, executor, types
+import time
+from back import *
+import datetime
 # Получение токена
 tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
 tok.close()
 
+# Инициализация бота
+rem_bot = Bot(token=TOKEN)            # Создание экземпляра бота
+loop = asyncio.get_event_loop()       # Создание цикла
+disp = Dispatcher(rem_bot, loop=loop) # Добавление цикла в диспетчер,
+                                      # Он запустит полинг и цикл с нашей функцией параллельно.
+# Информационное сообщение в консоль
+if rem_bot:
+    print('Запущено.')
+else:
+    print('Ошибка запуска.')
+
+# Стартовое сообщение
+@disp.message_handler(commands=['start'])
+async def welcome(message:types.Message):
+    await rem_bot.send_message(message.chat.id, 'Привет! Это бот - напоминалка\n' +
+                                            'Для взаимодействия используйте кнопки снизу\n' +
+                                            'Вызов помощи "/help"')
+
+    # Получение информации о пользователе запустившем бот.
+    date = message.date.strftime('%Y-%m-%d %H:%M:%S')
+    user_info = {'id': message.from_user.id,
+                 'Имя': message.from_user.first_name,
+                 'Имя пользователя': message.from_user.username,
+                 'Дата': date}
+    print(user_info)
+
+# Фоновая функция
+async def cickle_func():
+    print('Запуск')
+    for i in range(20):
+        print('Работаем', i)
+        await asyncio.sleep(0.5)
+    print('Всё! Отработали.')
+
+
+if __name__ == '__main__':
+    disp.loop.create_task(cickle_func())
+    executor.start_polling(disp,skip_updates=True)
+
+
+"""
+Старый код c pytelegramBotAPI
 # Создание экземпляра бота и подключение токена
 rem_bot = telebot.TeleBot(TOKEN)
 
@@ -127,4 +170,5 @@ def event_time_func(messege):
         rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
     temp_event.clear() # Очистка временного массива с данными о событии
 
-rem_bot.polling(none_stop=True, interval=0)       # Опрос сервера, не написал ли кто-нибудь?
+# Опрос сервера, не написал ли кто-нибудь?"""
+#rem_bot.polling(none_stop=True, interval=0)
