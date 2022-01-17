@@ -65,8 +65,8 @@ async def comand_to_bot(message:types.Message):
     # Проверка типа сообщения
     if message.chat.type == 'private':
         if message.text == 'Добавить событие':
-            #event_from_user(messege)
             await rem_bot.send_message(message.chat.id, 'Новое событие')
+            await event_from_user(message)
             # Написать функцию создания события
         elif message.text == 'Показать мои события':
             user = message.from_user.id                                      # получаем имя пользователя
@@ -80,6 +80,54 @@ async def comand_to_bot(message:types.Message):
         elif message.text == 'Редактировать события':
             await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
             # Дописать сложный код редактирования событий
+
+# Функция получения события от пользователя
+temp_event = {}
+async def event_from_user(messege):
+    mess = rem_bot.send_message(messege.chat.id, 'Название события')
+    await rem_bot.register_next_step_handler(mess, event_name_func)
+
+# Функция получения названия события
+async def event_name_func(messege):
+    temp_event['name'] = messege.text
+    mess1 = rem_bot.send_message(messege.chat.id, 'Дата события в формате: ГГГГ-ММ-ДД')
+    await rem_bot.register_next_step_handler(mess1, event_date_func)
+
+# Функция получения даты события
+async def event_date_func(messege):
+    temp_event['date'] = messege.text
+    mess2 = rem_bot.send_message(messege.chat.id, 'Время события в фотмате: ЧЧ-ММ')
+    await rem_bot.register_next_step_handler(mess2, event_time_func)
+
+# Функция получения времени события
+async def event_time_func(messege):
+    temp_event['time'] = messege.text
+    await rem_bot.send_message(messege.chat.id, 'Событие создано!')
+    await rem_bot.send_message(messege.chat.id, 'Событие: ' + temp_event['name'] + '\n' +
+                         'Дата: ' + temp_event['date'] + '\n' +
+                         'Время: ' + temp_event['time'])
+    temp_event['Имя'] = messege.from_user.first_name
+    temp_event['Имя пользователя'] = messege.from_user.username
+    temp_event['id'] = messege.from_user.id
+    print(temp_event)
+    """
+    # Запись события в базу
+    write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
+                                f"VALUES ('{temp_event['id']}','{temp_event['Имя']}','{temp_event['Имя пользователя']}'," \
+                                f"'{temp_event['date'] + '' +  '' + temp_event['time']}','{temp_event['name']}');"
+    write_event = base_query(write_event_to_base_query)
+    # Проверка корректности тоработки функции
+    if write_event is not None:
+        print('Событие добавлено успешно')
+        rem_bot.send_message(messege.chat.id, 'Событие добавлено.')
+    else:
+        print('Ошибка записи')
+        rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
+    temp_event.clear() # Очистка временного массива с данными о событии
+    """
+
+
+
 
 # Фоновая функция
 async def cickle_func():
