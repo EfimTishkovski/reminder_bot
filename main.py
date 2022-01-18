@@ -1,15 +1,10 @@
 import asyncio
-
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import types
-
-import time
 from back import *
-import datetime
-
 
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -116,30 +111,24 @@ async def welcome(message:types.Message):
     markup.row(btn_event_edit)  # Добавление кнопок во второй ряд
     await rem_bot.send_message(message.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
 
-# Функация принятия сообщения от пользователя(реакция нажатия на кнопки)
-@disp.message_handler()
-async def comand_to_bot(message:types.Message):
-    # Проверка типа сообщения
-    if message.chat.type == 'private':
-        if message.text == 'Добавить событие':
-            pass
-            #await rem_bot.send_message(message.chat.id, 'Новое событие')
-            #await event_from_user(message)
-            # Написать функцию создания события
-        elif message.text == 'Показать мои события':
-            user = message.from_user.id                                      # получаем имя пользователя
-            query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-            user_events = base_query(query, mode='search')
-            if user_events:
-                print(user_events)
-            else:
-                print('Записей нет.')
-                await rem_bot.send_message(message.chat.id, 'Записей нет.')
-        elif message.text == 'Редактировать события':
-            await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
-            # Дописать сложный код редактирования событий
+# Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Показать мои события")
+@disp.message_handler(lambda message: message.text == 'Показать мои события')
+async def my_events_command(message:types.Message):
+    user = message.from_user.id  # получаем имя пользователя
+    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+    user_events = base_query(query, mode='search')
+    if user_events:
+        print(user_events)
+        await rem_bot.send_message(message.chat.id, user_events)
+    else:
+        print('Записей нет.')
+        await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
-
+# Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Редактировать события")
+@disp.message_handler(lambda message: message.text == 'Редактировать события')
+async def edit_events_command(message:types.Message):
+    await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
+    # Дописать сложный код редактирования событий
 
 """
     # Запись события в базу
@@ -157,14 +146,12 @@ async def comand_to_bot(message:types.Message):
     temp_event.clear() # Очистка временного массива с данными о событии
 """
 
-
 # Фоновая функция
 async def cickle_func():
     print('Запуск фоновой функции')
     while True:
         print('Фоновая функция работает')
         await asyncio.sleep(5)
-
 
 
 if __name__ == '__main__':
