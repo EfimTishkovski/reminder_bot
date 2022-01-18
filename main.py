@@ -31,24 +31,41 @@ else:
 # Создание диалога для ввода события пользователем
 # Создаём состояния FSM
 class FSM_event_user(StatesGroup):
-    name_event = State()
+    name = State()
     date = State()
     time = State()
 
 # Начало диалога
 @disp.message_handler(lambda message: message.text == 'Добавить событие', state=None)
 async def event_start(message: types.Message):
-    await FSM_event_user.name_event.set()
+    await FSM_event_user.name.set()
     await rem_bot.send_message(message.chat.id, 'Введите название')
 
+# Ловим название события
+@disp.message_handler(state=FSM_event_user.name)
+async def event_start(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:               # Узнать что это (вроде запись данных)
+        data['Название'] = message.text             # получение данных от пользователя в словарь
+    await FSM_event_user.next()                     # Переход к следующему состоянию машины
+    await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
+    await rem_bot.send_message(message.chat.id, 'Введите дату')  # Сообщению пользователю что делать дальше
+
+# Ловим дату события
+@disp.message_handler(state=FSM_event_user.date)
+async def event_start(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:          # Узнать что это (вроде запись данных)
+        data['Дата'] = message.text            # получение данных от пользователя в словарь
+    await FSM_event_user.next()                # Переход к следующему состоянию машины
+    await FSM_event_user.time.set()            # Установка к следующего состоянию машины
+    await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
+
 # Завершение диалога
-@disp.message_handler(state=FSM_event_user.name_event)
+@disp.message_handler(state=FSM_event_user.time)
 async def print_event(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
-        data['Имя события'] = message.text
+        data['Время'] = message.text
         user_info = {'id': message.from_user.id,
-                     'Имя': message.from_user.first_name,
-                     'Название события' : message.text}
+                     'Имя': message.from_user.first_name}
         print(data.as_dict())  # Данные в памяти в виде словаря
         print(user_info)       # Словарь с данными пользователя
     await state.finish()
