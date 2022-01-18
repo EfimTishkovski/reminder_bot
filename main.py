@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import types
 
 import time
@@ -18,7 +19,7 @@ tok.close()
 # Инициализация бота
 rem_bot = Bot(token=TOKEN)            # Создание экземпляра бота
 loop = asyncio.get_event_loop()       # Создание цикла
-disp = Dispatcher(rem_bot, loop=loop) # Добавление цикла в диспетчер,
+disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
                                       # Он запустит полинг и цикл с нашей функцией параллельно.
 # Информационное сообщение в консоль
 if rem_bot:
@@ -26,6 +27,7 @@ if rem_bot:
 else:
     print('Ошибка запуска.')
 
+# Функция получения события от пользователя
 # Создание диалога для ввода события пользователем
 # Создаём состояния FSM
 class FSM_event_user(StatesGroup):
@@ -44,7 +46,11 @@ async def event_start(message: types.Message):
 async def print_event(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         data['Имя события'] = message.text
-        print(data)
+        user_info = {'id': message.from_user.id,
+                     'Имя': message.from_user.first_name,
+                     'Название события' : message.text}
+        print(data.as_dict())  # Данные в памяти в виде словаря
+        print(user_info)       # Словарь с данными пользователя
     await state.finish()
 
 
@@ -93,7 +99,8 @@ async def comand_to_bot(message:types.Message):
     # Проверка типа сообщения
     if message.chat.type == 'private':
         if message.text == 'Добавить событие':
-            await rem_bot.send_message(message.chat.id, 'Новое событие')
+            pass
+            #await rem_bot.send_message(message.chat.id, 'Новое событие')
             #await event_from_user(message)
             # Написать функцию создания события
         elif message.text == 'Показать мои события':
@@ -109,8 +116,6 @@ async def comand_to_bot(message:types.Message):
             await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
             # Дописать сложный код редактирования событий
 
-# Функция получения события от пользователя
-#temp_event = {}
 
 
 """
