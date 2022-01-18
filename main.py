@@ -15,7 +15,7 @@ tok.close()
 rem_bot = Bot(token=TOKEN)            # Создание экземпляра бота
 loop = asyncio.get_event_loop()       # Создание цикла
 disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
-                                      # Он запустит полинг и цикл с нашей функцией параллельно.
+                                                               # Он запустит полинг и цикл с нашей функцией параллельно.
 # Информационное сообщение в консоль
 if rem_bot:
     print('Запущено.')
@@ -56,21 +56,33 @@ async def event_start(message: types.Message, state: FSMContext):
 
 # Завершение диалога
 @disp.message_handler(state=FSM_event_user.time)
-async def print_event(message:types.Message, state:FSMContext):
+async def print_event(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['Время'] = message.text
         # Словарь с данными пользователя
         user_info = {'id': message.from_user.id,
-                     'Имя': message.from_user.first_name}
-        print(data.as_dict())  # Данные в памяти в виде словаря
-        data_event = data.as_dict()
-        print(user_info)       # Словарь с данными пользователя
+                     'Имя': message.from_user.first_name,
+                     'Имя пользователя': message.from_user.username}
+        #print(data.as_dict())  # Данные в памяти в виде словаря
+        data_event = data.as_dict()   # Данные в памяти в виде словаря
     await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
-    await state.finish()
+    # Запись события в базу
+    write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
+                                f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
+                                f"'{data_event['Дата'] + data_event['Время']}','{data_event['Название']}');"
+    write_event = base_query(write_event_to_base_query)
+    # Проверка корректности тоработки функции
+    if write_event is not None:
+        print('Событие добавлено успешно')
+        await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
+    else:
+        print('Ошибка записи')
+        await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
+    await state.finish()  # Завершение работы МС
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
