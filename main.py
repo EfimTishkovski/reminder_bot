@@ -1,9 +1,15 @@
 import asyncio
 
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram import types
+
 import time
 from back import *
 import datetime
+
+
 # Получение токена
 tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
@@ -19,6 +25,28 @@ if rem_bot:
     print('Запущено.')
 else:
     print('Ошибка запуска.')
+
+# Создание диалога для ввода события пользователем
+# Создаём состояния FSM
+class FSM_event_user(StatesGroup):
+    name_event = State()
+    date = State()
+    time = State()
+
+# Начало диалога
+@disp.message_handler(lambda message: message.text == 'Добавить событие', state=None)
+async def event_start(message: types.Message):
+    await FSM_event_user.name_event.set()
+    await rem_bot.send_message(message.chat.id, 'Введите название')
+
+# Завершение диалога
+@disp.message_handler(state=FSM_event_user.name_event)
+async def print_event(message:types.Message, state:FSMContext):
+    async with state.proxy() as data:
+        data['Имя события'] = message.text
+        print(data)
+    await state.finish()
+
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
@@ -66,7 +94,7 @@ async def comand_to_bot(message:types.Message):
     if message.chat.type == 'private':
         if message.text == 'Добавить событие':
             await rem_bot.send_message(message.chat.id, 'Новое событие')
-            await event_from_user(message)
+            #await event_from_user(message)
             # Написать функцию создания события
         elif message.text == 'Показать мои события':
             user = message.from_user.id                                      # получаем имя пользователя
@@ -82,35 +110,10 @@ async def comand_to_bot(message:types.Message):
             # Дописать сложный код редактирования событий
 
 # Функция получения события от пользователя
-temp_event = {}
-async def event_from_user(messege):
-    mess = rem_bot.send_message(messege.chat.id, 'Название события')
-    await rem_bot.register_next_step_handler(mess, event_name_func)
+#temp_event = {}
 
-# Функция получения названия события
-async def event_name_func(messege):
-    temp_event['name'] = messege.text
-    mess1 = rem_bot.send_message(messege.chat.id, 'Дата события в формате: ГГГГ-ММ-ДД')
-    await rem_bot.register_next_step_handler(mess1, event_date_func)
 
-# Функция получения даты события
-async def event_date_func(messege):
-    temp_event['date'] = messege.text
-    mess2 = rem_bot.send_message(messege.chat.id, 'Время события в фотмате: ЧЧ-ММ')
-    await rem_bot.register_next_step_handler(mess2, event_time_func)
-
-# Функция получения времени события
-async def event_time_func(messege):
-    temp_event['time'] = messege.text
-    await rem_bot.send_message(messege.chat.id, 'Событие создано!')
-    await rem_bot.send_message(messege.chat.id, 'Событие: ' + temp_event['name'] + '\n' +
-                         'Дата: ' + temp_event['date'] + '\n' +
-                         'Время: ' + temp_event['time'])
-    temp_event['Имя'] = messege.from_user.first_name
-    temp_event['Имя пользователя'] = messege.from_user.username
-    temp_event['id'] = messege.from_user.id
-    print(temp_event)
-    """
+"""
     # Запись события в базу
     write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
                                 f"VALUES ('{temp_event['id']}','{temp_event['Имя']}','{temp_event['Имя пользователя']}'," \
@@ -124,9 +127,7 @@ async def event_time_func(messege):
         print('Ошибка записи')
         rem_bot.send_message(messege.chat.id, 'Оп! Что-то с базой не так.')
     temp_event.clear() # Очистка временного массива с данными о событии
-    """
-
-
+"""
 
 
 # Фоновая функция
