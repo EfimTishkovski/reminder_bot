@@ -64,12 +64,18 @@ async def event_start(message: types.Message, state: FSMContext):
 async def print_event(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         data['Время'] = message.text
+        # Словарь с данными пользователя
         user_info = {'id': message.from_user.id,
                      'Имя': message.from_user.first_name}
         print(data.as_dict())  # Данные в памяти в виде словаря
+        data_event = data.as_dict()
         print(user_info)       # Словарь с данными пользователя
+    await rem_bot.send_message(message.chat.id, 'Событие: \n' +
+                               f"Пользователь: {user_info['Имя']} \n" +
+                               f"Название: {data_event['Название']} \n" +
+                               f"Дата: {data_event['Дата']} \n" +
+                               f"Время: {data_event['Время']}")
     await state.finish()
-
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
