@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher.filters import Text
 from aiogram import types
 from back import *
 
@@ -35,6 +36,18 @@ class FSM_event_user(StatesGroup):
 async def event_start(message: types.Message):
     await FSM_event_user.name.set()
     await rem_bot.send_message(message.chat.id, 'Введите название')
+
+# Выход из состояний (отмена для диалога ввода даты)
+# "*" - любое состояние МС
+@disp.message_handler(state="*", commands='отмена')  # хэндлер срабатывает по команде /отмена
+@disp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
+async def cancel_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()  # Получаем текущее состояние МС
+    # Если МС не задействована, то ничего не происходит
+    if current_state is None:
+        return
+    await state.finish()
+    await message.answer('Ok')
 
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
@@ -92,6 +105,8 @@ async def event_time(message: types.Message, state: FSMContext):
         print('Ошибка записи')
         await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
     await state.finish()  # Завершение работы МС
+
+
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
