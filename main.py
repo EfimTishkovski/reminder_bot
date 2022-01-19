@@ -162,7 +162,6 @@ async def my_events_command(message:types.Message):
     user_events = base_query(query, mode='search')
     if user_events:
         #print(user_events)
-        await rem_bot.send_message(message.chat.id, user_events)
         for element in user_events:
             await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
         await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')

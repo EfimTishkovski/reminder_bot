@@ -83,3 +83,7 @@ def check_date(date):
             return False,'Дата не корректна'
     else:
         return False, 'Формат даты не корректен'
+
+# Функция проверки корректновти времени
+def check_time(time):
+    pass
