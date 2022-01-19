@@ -43,12 +43,13 @@ async def event_start(message: types.Message, state: FSMContext):
         data['Название'] = message.text             # получение данных от пользователя в словарь
     await FSM_event_user.next()                     # Переход к следующему состоянию машины
     await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
-    await rem_bot.send_message(message.chat.id, 'Введите дату')  # Сообщению пользователю что делать дальше
+    await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
 
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
 async def event_start(message: types.Message, state: FSMContext):
     async with state.proxy() as data:          # Узнать что это (вроде запись данных)
+        # дописать маску и проверку ввода
         data['Дата'] = message.text            # получение данных от пользователя в словарь
     await FSM_event_user.next()                # Переход к следующему состоянию машины
     await FSM_event_user.time.set()            # Установка к следующего состоянию машины
@@ -58,6 +59,7 @@ async def event_start(message: types.Message, state: FSMContext):
 @disp.message_handler(state=FSM_event_user.time)
 async def print_event(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
+        # дописать маску и проверку ввода
         data['Время'] = message.text
         # Словарь с данными пользователя
         user_info = {'id': message.from_user.id,
