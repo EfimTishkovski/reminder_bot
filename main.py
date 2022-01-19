@@ -106,8 +106,6 @@ async def event_time(message: types.Message, state: FSMContext):
         await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
     await state.finish()  # Завершение работы МС
 
-
-
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
 async def welcome(message:types.Message):
@@ -147,6 +145,15 @@ async def welcome(message:types.Message):
     markup.row(btn_event_edit)  # Добавление кнопок во второй ряд
     await rem_bot.send_message(message.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
 
+# Хелп
+@disp.message_handler(commands=['help'])
+async def help(message:types.Message):
+    await rem_bot.send_message(message.chat.id, 'Как с ним общаться:\n' +
+                               '/start перезапуск\n' +
+                               'Кнопка "Добавить событие" - добавить новое событие\n' +
+                               'Кнопка "Показать мои события" - показывает все активные события пользователя запустившего бот\n' +
+                               'Кнопка "Редактировать события" - открывает менюшку редактирования событий')
+
 # Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Показать мои события")
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
 async def my_events_command(message:types.Message):
@@ -155,6 +162,7 @@ async def my_events_command(message:types.Message):
     user_events = base_query(query, mode='search')
     if user_events:
         print(user_events)
+        # Дописать человеческий вывод
         await rem_bot.send_message(message.chat.id, user_events)
     else:
         print('Записей нет.')
