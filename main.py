@@ -38,7 +38,7 @@ async def event_start(message: types.Message):
 
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
-async def event_start(message: types.Message, state: FSMContext):
+async def event_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:               # Узнать что это (вроде запись данных)
         data['Название'] = message.text             # получение данных от пользователя в словарь
     await FSM_event_user.next()                     # Переход к следующему состоянию машины
@@ -47,17 +47,24 @@ async def event_start(message: types.Message, state: FSMContext):
 
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
-async def event_start(message: types.Message, state: FSMContext):
+async def event_date(message: types.Message, state: FSMContext):
     async with state.proxy() as data:          # Узнать что это (вроде запись данных)
-        # дописать маску и проверку ввода
-        data['Дата'] = message.text            # получение данных от пользователя в словарь
-    await FSM_event_user.next()                # Переход к следующему состоянию машины
-    await FSM_event_user.time.set()            # Установка к следующего состоянию машины
-    await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
+        # Проверка даты
+        date_input = check_date(message.text)  # Основная функция проверки
+        if date_input[0]:
+            data['Дата'] = message.text        # Получение данных от пользователя в словарь
+            await FSM_event_user.next()        # Переход к следующему состоянию машины
+            await FSM_event_user.time.set()    # Установка к следующего состоянию машины
+            await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
+            print(date_input[1])
+        else:
+            print(date_input[1])
+            await rem_bot.send_message(message.chat.id, date_input[1])
+            await rem_bot.send_message(message.chat.id, 'Введите дату снова\n' + 'Формат даты: ГГГГ-ММ-ДД')
 
 # Завершение диалога
 @disp.message_handler(state=FSM_event_user.time)
-async def print_event(message: types.Message, state: FSMContext):
+async def event_time(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         # дописать маску и проверку ввода
         data['Время'] = message.text
@@ -77,7 +84,7 @@ async def print_event(message: types.Message, state: FSMContext):
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата'] + data_event['Время']}','{data_event['Название']}');"
     write_event = base_query(write_event_to_base_query)
-    # Проверка корректности тоработки функции
+    # Проверка корректности отработки функции
     if write_event is not None:
         print('Событие добавлено успешно')
         await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
@@ -149,7 +156,7 @@ async def cickle_func():
     print('Запуск фоновой функции')
     while True:
         print('Фоновая функция работает')
-        await asyncio.sleep(5)
+        await asyncio.sleep(20)
 
 if __name__ == '__main__':
     disp.loop.create_task(cickle_func())
