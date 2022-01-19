@@ -95,7 +95,7 @@ async def event_time(message: types.Message, state: FSMContext):
     # Запись события в базу
     write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата'] + data_event['Время']}','{data_event['Название']}');"
+                                f"'{data_event['Дата'] + ' ' + data_event['Время']}','{data_event['Название']}');"
     write_event = base_query(write_event_to_base_query)
     # Проверка корректности отработки функции
     if write_event is not None:
@@ -161,9 +161,11 @@ async def my_events_command(message:types.Message):
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
     user_events = base_query(query, mode='search')
     if user_events:
-        print(user_events)
-        # Дописать человеческий вывод
+        #print(user_events)
         await rem_bot.send_message(message.chat.id, user_events)
+        for element in user_events:
+            await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
+        await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')
     else:
         print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
