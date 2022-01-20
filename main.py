@@ -5,6 +5,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters import Text
 from aiogram import types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 
 # Получение токена
@@ -52,6 +53,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
+    # Дописать функцию проверки одинаковых событий (по названию)
     async with state.proxy() as data:               # Узнать что это (вроде запись данных)
         data['Название'] = message.text             # получение данных от пользователя в словарь
     await FSM_event_user.next()                     # Переход к следующему состоянию машины
@@ -169,11 +171,30 @@ async def my_events_command(message:types.Message):
         print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
+
+# Инлайновая клавиатура обработки событий.
+# Создание клавиатуры
+inline_key = InlineKeyboardMarkup(row_width=1).add(
+        InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
+
 # Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Редактировать события")
 @disp.message_handler(lambda message: message.text == 'Редактировать события')
 async def edit_events_command(message:types.Message):
-    await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
+    #await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
     # Дописать сложный код редактирования событий
+    await message.answer('События в кнопках', reply_markup=inline_key)
+
+# Обработчик события(обновления) имя записанное в callback_data
+@disp.callback_query_handler(text='users_events_data')
+async def edit_events_button(callback : types.CallbackQuery):
+    await callback.message.answer('Активные напоминания')
+    await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
+                              # Это убирает часики ожидания на кнопке
+
+
+
+
+
 
 # Фоновая функция
 async def cickle_func():
