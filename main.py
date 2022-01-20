@@ -172,16 +172,27 @@ async def my_events_command(message:types.Message):
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
 
-# Инлайновая клавиатура обработки событий.
-# Создание клавиатуры
-inline_key = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
-
 # Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Редактировать события")
 @disp.message_handler(lambda message: message.text == 'Редактировать события')
 async def edit_events_command(message:types.Message):
     #await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
+
     # Дописать сложный код редактирования событий
+
+    user = message.from_user.id  # получаем имя пользователя
+    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+    user_events = base_query(query, mode='search')
+    # Инлайновая клавиатура обработки событий.
+    # Создание клавиатуры
+    # Массив кнопок с названиями событий
+    button_mass = []
+    for line in user_events:
+        button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data='users_events_data'))
+
+    inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
+    inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
+    #inline_key.add(InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
+    print(user_events)
     await message.answer('События в кнопках', reply_markup=inline_key)
 
 # Обработчик события(обновления) имя записанное в callback_data
@@ -190,8 +201,6 @@ async def edit_events_button(callback : types.CallbackQuery):
     await callback.message.answer('Активные напоминания')
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
-
-
 
 
 
