@@ -24,6 +24,9 @@ if rem_bot:
 else:
     print('Ошибка запуска.')
 
+# Глобальные переменные
+user_events_glob = []
+
 # Функция получения события от пользователя
 # Создание диалога для ввода события пользователем
 # Создаём состояния FSM
@@ -180,27 +183,37 @@ async def edit_events_command(message:types.Message):
 
     user = message.from_user.id  # получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    user_events = base_query(query, mode='search')
+    global user_events_glob
+    user_events_glob.clear()                                   # Очистка глобального массива событий
+    user_events_glob.extend(base_query(query, mode='search'))  # Передача массива с событиями в глобальную переменную
+    #user_events = base_query(query, mode='search')
 
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
     button_mass = []
-    for line in user_events:
+    for line in user_events_glob:
         button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data=f'users_events_button{line[4]}'))
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
     inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
     #inline_key.add(InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
-    print(user_events)
+    print(user_events_glob)
     await message.answer('События в кнопках', reply_markup=inline_key)
 
 
 # Обработчик события(обновления) имя записанное в callback_data
-@disp.callback_query_handler(Text(startswith='users_events_button'))  #(text='users_events_button')
+@disp.callback_query_handler(Text(startswith='users_events_button'))
 async def edit_events_button(callback : types.CallbackQuery):
     event = callback.data.replace('users_events_button','')  # Вытягиваем название события
-    await callback.message.answer(event)                     # Вывод пользователю
+    for line in user_events_glob:
+        if event in line:
+            await callback.message.answer('Событие: ' + f'{line[4]}\n' +
+                                          'Дата: ' + f'{line[3]}')  # Вывод пользователю
+            break
+    else:
+        print('Ошибка при поске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
+
     # Дописать вывод информации по событию и действия по редактированию (ин кнопки)
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
