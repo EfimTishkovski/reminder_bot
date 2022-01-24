@@ -175,6 +175,7 @@ async def my_events_command(message:types.Message):
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
 
+# Возможно придётся переписать через FSM
 # Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Редактировать события")
 @disp.message_handler(lambda message: message.text == 'Редактировать события')
 async def edit_events_command(message:types.Message):
@@ -206,17 +207,32 @@ async def edit_events_command(message:types.Message):
 @disp.callback_query_handler(Text(startswith='users_events_button'))
 async def edit_events_button(callback : types.CallbackQuery):
     event = callback.data.replace('users_events_button','')  # Вытягиваем название события
+    # Инлайновая клавиатура обработки событий.
+    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
+    edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
+    cancel_button = InlineKeyboardButton(text='Отмена', callback_data='click_cancel')  # Кнопка отмена
+    inline_key.add(edit_button, cancel_button)
+
     for line in user_events_glob:
         if event in line:
             await callback.message.answer('Событие: ' + f'{line[4]}\n' +
-                                          'Дата: ' + f'{line[3]}')  # Вывод пользователю
+                                          'Дата: ' + f'{line[3]}', reply_markup=inline_key)  # Вывод пользователю
             break
     else:
-        print('Ошибка при поске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
+        print('Ошибка при поиске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
 
     # Дописать вывод информации по событию и действия по редактированию (ин кнопки)
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
+
+# Отлавливаем нажатие на кнопки редактирования событий
+@ disp.callback_query_handler(Text(startswith='click_'))
+async def edit_button(callback : types.CallbackQuery):
+    button = callback.data
+    if button:
+        print(button)
+        await callback.message.answer('Нажата ' + button)
+        await callback.answer()
 
 
 # Фоновая функция
