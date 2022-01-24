@@ -117,6 +117,7 @@ async def event_time(message: types.Message, state: FSMContext):
 class FSM_edit_event(StatesGroup):
     event_keyboard = State()
     event_edit = State()
+    event_new_name = State()
 
 
 # Начало работы редактирования
@@ -183,11 +184,18 @@ async def edit_events_button(callback : types.CallbackQuery, state : FSMContext)
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
 
-@disp.callback_query_handler(state=FSM_edit_event.event_edit)
-async def edit_current_event(callback : types.CallbackQuery, state : FSMContext):
-    await callback.message.answer('Диалог завершён')
-    await callback.answer()
+# Получение нового имени события
+@disp.message_handler(state=FSM_edit_event.event_edit)
+async def edit_current_event(message : types.Message, state : FSMContext):
+    await rem_bot.send_message(message.chat.id, 'Введите новое имя события.')
+    #async with state.proxy() as data:
+    new_name_event = message.text
+    print(new_name_event)
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_name.set()
+    #await callback.answer()
     await state.finish()
+
 #####################################################################################################################
 
 
