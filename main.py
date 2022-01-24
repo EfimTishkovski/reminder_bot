@@ -116,6 +116,7 @@ async def event_time(message: types.Message, state: FSMContext):
 # Кнопка "Редактировать события" через FSM
 class FSM_edit_event(StatesGroup):
     event_keyboard = State()
+    event_edit = State()
 
 
 # Начало работы редактирования
@@ -143,7 +144,6 @@ async def edit_events_command(message:types.Message, state : FSMContext):
     #inline_key.add(InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
     print(user_events_glob)
     await message.answer('События в кнопках', reply_markup=inline_key)
-    #await state.finish()  # Завершение работы МС
 
 
 # Кнопка отмены редактирования
@@ -153,22 +153,23 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
     # Если МС не задействована, то ничего не происходит
     if current_state is None:
         return
-    #await rem_bot.send_message(message.chat.id, 'Редактирование отменено')
+
     await callback.message.answer('Редактирование отменено')  # Вывод пользователю
     await callback.answer()
     await state.finish()
-    #await message.answer()
-
 
 # Обработчик события(обновления) имя записанное в callback_data
-@disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event)
+@disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event.event_keyboard)
 async def edit_events_button(callback : types.CallbackQuery, state : FSMContext):
+
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_edit.set()
 
     event = callback.data.replace('users_events_button','')  # Вытягиваем название события
     # Инлайновая клавиатура обработки событий.
     inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
     edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
-    cancel_button = InlineKeyboardButton(text='Отмена', callback_data='click_cancel')  # Кнопка отмена
+    cancel_button = InlineKeyboardButton(text='Отмена', callback_data='cancel')  # Кнопка отмена
     inline_key.add(edit_button, cancel_button)
 
     for line in user_events_glob:
@@ -179,10 +180,14 @@ async def edit_events_button(callback : types.CallbackQuery, state : FSMContext)
     else:
         print('Ошибка при поиске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
 
-    # Дописать вывод информации по событию и действия по редактированию (ин кнопки)
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
-    await state.finish()  # Завершение работы МС
+
+@disp.callback_query_handler(state=FSM_edit_event.event_edit)
+async def edit_current_event(callback : types.CallbackQuery, state : FSMContext):
+    await callback.message.answer('Диалог завершён')
+    await callback.answer()
+    await state.finish()
 #####################################################################################################################
 
 
