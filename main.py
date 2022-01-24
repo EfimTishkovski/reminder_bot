@@ -90,7 +90,7 @@ async def event_time(message: types.Message, state: FSMContext):
         user_info = {'id': message.from_user.id,
                      'Имя': message.from_user.first_name,
                      'Имя пользователя': message.from_user.username}
-        #print(data.as_dict())  # Данные в памяти в виде словаря
+
         data_event = data.as_dict()   # Данные в памяти в виде словаря
     await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
@@ -111,18 +111,20 @@ async def event_time(message: types.Message, state: FSMContext):
         await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
     await state.finish()  # Завершение работы МС
 
-
 ######################################################################################################################
+
 # Кнопка "Редактировать события" через FSM
 class FSM_edit_event(StatesGroup):
-    event_keyboard = State()
-    event_edit = State()
-    event_new_name = State()
+    event_keyboard = State()       # Состояние отображение списка собылий в виду кнопок
+    event_edit = State()           # Сотояние редактирования событий
+    event_new_name = State()       # Состояние получения нового имени
+    event_new_date = State()       # Состояние получения новой даты
+    event_new_time = State()       # Cостояние получения пового времени
 
 
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
-async def edit_events_command(message:types.Message, state : FSMContext):
+async def edit_events_command(message:types.Message):
     await FSM_edit_event.event_keyboard.set()     # Установка нового состояния МС
 
     # Работа функции
@@ -130,7 +132,13 @@ async def edit_events_command(message:types.Message, state : FSMContext):
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
     global user_events_glob
     user_events_glob.clear()                                   # Очистка глобального массива событий
-    user_events_glob.extend(base_query(query, mode='search'))  # Передача массива с событиями в глобальную переменную
+    data_from_query = base_query(query, mode='search')
+    # Проверка на ошибку БД
+    if data_from_query is not None:
+        user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
+    else:
+        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибкочка с базой.')
+        print('Ошибка с БД')
 
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
@@ -142,10 +150,7 @@ async def edit_events_command(message:types.Message, state : FSMContext):
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
     inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
-    #inline_key.add(InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
-    print(user_events_glob)
     await message.answer('События в кнопках', reply_markup=inline_key)
-
 
 # Кнопка отмены редактирования
 @disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
@@ -161,11 +166,9 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 
 # Обработчик события(обновления) имя записанное в callback_data
 @disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event.event_keyboard)
-async def edit_events_button(callback : types.CallbackQuery, state : FSMContext):
-
+async def edit_events_button(callback : types.CallbackQuery):
     await FSM_edit_event.next()
     await FSM_edit_event.event_edit.set()
-
     event = callback.data.replace('users_events_button','')  # Вытягиваем название события
     # Инлайновая клавиатура обработки событий.
     inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -179,26 +182,41 @@ async def edit_events_button(callback : types.CallbackQuery, state : FSMContext)
                                           'Дата: ' + f'{line[3]}', reply_markup=inline_key)  # Вывод пользователю
             break
     else:
-        print('Ошибка при поиске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
+        print('Ошибка при поиске события')   # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
 
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
 
-# Получение нового имени события
-@disp.message_handler(state=FSM_edit_event.event_edit)
-async def edit_current_event(message : types.Message, state : FSMContext):
-    await rem_bot.send_message(message.chat.id, 'Введите новое имя события.')
-    #async with state.proxy() as data:
-    new_name_event = message.text
-    print(new_name_event)
+# Начало диалога для получения новых данных нового имени события
+@disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
+async def edit_current_event(callback : types.CallbackQuery):
+    await callback.message.answer('Введите новое имя события.')
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_name.set()
-    #await callback.answer()
+    await callback.answer()
+
+# Получение нового имени
+@ disp.message_handler(state=FSM_edit_event.event_new_name)
+async def edit_name(message : types.Message, state : FSMContext):
+    async with state.proxy() as data:
+        data['Новое имя события'] = message.text
+    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_date.set()
+
+# Получение новой даты
+@disp.message_handler(state=FSM_edit_event.event_new_date)
+async def edit_date(message : types.Message, state : FSMContext):
+    async with state.proxy() as data:
+        data['Новая дата события'] = message.text
+    data = data.as_dict()
+    print(data)
+    await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_time.set()
     await state.finish()
 
 #####################################################################################################################
-
-
 
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
@@ -255,7 +273,6 @@ async def my_events_command(message:types.Message):
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
     user_events = base_query(query, mode='search')
     if user_events:
-        #print(user_events)
         for element in user_events:
             await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
         await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')
@@ -263,67 +280,6 @@ async def my_events_command(message:types.Message):
         print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
-
-"""
-# Возможно придётся переписать через FSM
-# Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Редактировать события")
-@disp.message_handler(lambda message: message.text == 'Редактировать события')
-async def edit_events_command(message:types.Message):
-    #await rem_bot.send_message(message.chat.id, 'Тут будет сложный код =)')
-    # Дописать сложный код редактирования событий
-
-    user = message.from_user.id  # получаем имя пользователя
-    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    global user_events_glob
-    user_events_glob.clear()                                   # Очистка глобального массива событий
-    user_events_glob.extend(base_query(query, mode='search'))  # Передача массива с событиями в глобальную переменную
-    #user_events = base_query(query, mode='search')
-
-    # Инлайновая клавиатура обработки событий.
-    # Массив кнопок с названиями событий
-    button_mass = []
-    for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data=f'users_events_button{line[4]}'))
-
-    # Создание клавиатуры
-    inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
-    #inline_key.add(InlineKeyboardButton(text='Событие', callback_data='users_events_data'))
-    print(user_events_glob)
-    await message.answer('События в кнопках', reply_markup=inline_key)
-
-
-# Обработчик события(обновления) имя записанное в callback_data
-@disp.callback_query_handler(Text(startswith='users_events_button'))
-async def edit_events_button(callback : types.CallbackQuery):
-    event = callback.data.replace('users_events_button','')  # Вытягиваем название события
-    # Инлайновая клавиатура обработки событий.
-    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
-    edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
-    cancel_button = InlineKeyboardButton(text='Отмена', callback_data='click_cancel')  # Кнопка отмена
-    inline_key.add(edit_button, cancel_button)
-
-    for line in user_events_glob:
-        if event in line:
-            await callback.message.answer('Событие: ' + f'{line[4]}\n' +
-                                          'Дата: ' + f'{line[3]}', reply_markup=inline_key)  # Вывод пользователю
-            break
-    else:
-        print('Ошибка при поиске события')     # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
-
-    # Дописать вывод информации по событию и действия по редактированию (ин кнопки)
-    await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
-                              # Это убирает часики ожидания на кнопке
-
-# Отлавливаем нажатие на кнопки редактирования событий
-@ disp.callback_query_handler(Text(startswith='click_'))
-async def edit_button(callback : types.CallbackQuery):
-    button = callback.data
-    if button:
-        print(button)
-        await callback.message.answer('Нажата ' + button)
-        await callback.answer()
-"""
 
 # Фоновая функция
 async def cickle_func():
