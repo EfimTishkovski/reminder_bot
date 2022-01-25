@@ -8,13 +8,14 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 
-# Получение токена
+
+# Запуск
 tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
 tok.close()
 
 # Инициализация бота
-rem_bot = Bot(token=TOKEN)            # Создание экземпляра бота
+rem_bot = Bot(token=TOKEN)       # Создание экземпляра бота
 loop = asyncio.get_event_loop()       # Создание цикла
 disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
                                                                # Он запустит полинг и цикл с нашей функцией параллельно.
@@ -206,15 +207,24 @@ async def edit_name(message : types.Message, state : FSMContext):
 
 # Получение новой даты
 @disp.message_handler(state=FSM_edit_event.event_new_date)
-async def edit_date(message : types.Message, state : FSMContext):
+async def edit_date(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         data['Новая дата события'] = message.text
-    data = data.as_dict()
-    print(data)
     await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_time.set()
+
+# Получение нового времени
+@disp.message_handler(state=FSM_edit_event.event_new_time)
+async def edit_time(message:types.Message, state:FSMContext):
+    async with state.proxy() as data:
+        data['Новое веремя'] = message.text
+    data = data.as_dict()
+    print(data)
+    # дописать внесение изменений в базу
+    await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
     await state.finish()
+
 
 #####################################################################################################################
 

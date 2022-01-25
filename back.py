@@ -7,6 +7,15 @@ import datetime
 # Если функция выполняет поиск, то возвращаются его результаты
 # mode='search'
 # Если запись или удаление, то True при успешной отработке
+
+# Функция соединения с БД
+def start_base():
+    global base, cursor  # голобальные переменные с именем басы и курсором
+    base = sqlite3.connect('users_data.db')
+    cursor = base.cursor()
+    if base:
+        print('База успешно подключена')
+
 def base_query(query='', mode=''):
     try:
         connection = sqlite3.connect('users_data.db')
@@ -84,6 +93,12 @@ def check_date(date):
     else:
         return False, 'Формат даты не корректен'
 
-# Функция проверки корректновти времени
+# Функция проверки корректности времени
 def check_time(time):
+    pass
+
+# Функция проверки имени события в базе (повторяющиеся имена)
+# True - норм, не повторяется
+# False - имя уже занято
+def repeat_name():
     pass
