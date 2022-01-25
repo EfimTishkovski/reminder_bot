@@ -208,11 +208,15 @@ async def edit_current_event(callback : types.CallbackQuery):
 # Получение нового имени
 @ disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
-    async with state.proxy() as data:
-        data['Новое имя события'] = message.text
-    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
-    await FSM_edit_event.next()
-    await FSM_edit_event.event_new_date.set()
+    # Проверка имени на совпадения
+    if repeat_name(message.text, base, cursor):
+        async with state.proxy() as data:
+            data['Новое имя события'] = message.text
+        await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
+        await FSM_edit_event.next()
+        await FSM_edit_event.event_new_date.set()
+    else:
+        await message.reply('Такое событие уже есть. Придумайте другое имя.')
 
 # Получение новой даты
 @disp.message_handler(state=FSM_edit_event.event_new_date)
@@ -231,6 +235,7 @@ async def edit_time(message:types.Message, state:FSMContext):
     data = data.as_dict()
     print(data)
     # дописать внесение изменений в базу
+
     await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
     await state.finish()
 
@@ -268,12 +273,12 @@ async def welcome(message:types.Message):
     user_info.clear()  # Очистка словаря с данными пользователя
 
     # Создание кнопок интерфейса бота
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)  # Создание объекта клавиатура
-    btn_create_event = types.KeyboardButton('Добавить событие')  # Кнопка создания нового события
-    btn_my_event = types.KeyboardButton('Показать мои события')  # Кнопка просмотра активных событий пользователя
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)       # Создание объекта клавиатура
+    btn_create_event = types.KeyboardButton('Добавить событие')    # Кнопка создания нового события
+    btn_my_event = types.KeyboardButton('Показать мои события')    # Кнопка просмотра активных событий пользователя
     btn_event_edit = types.KeyboardButton('Редактировать события') # Кнопка редактирования активных событий пользователя
-    markup.row(btn_create_event, btn_my_event)  # Добавление кнопок в первый ряд
-    markup.row(btn_event_edit)  # Добавление кнопок во второй ряд
+    markup.row(btn_create_event, btn_my_event)            # Добавление кнопок в первый ряд
+    markup.row(btn_event_edit)                            # Добавление кнопок во второй ряд
     await rem_bot.send_message(message.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
 
 # Хелп
@@ -298,7 +303,6 @@ async def my_events_command(message:types.Message):
     else:
         print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
-
 
 # Фоновая функция
 async def cickle_func():
