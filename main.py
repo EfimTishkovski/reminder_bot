@@ -29,6 +29,8 @@ async def start_func(_):
 # Функция завершения работы бота, сообщение, запуск в полинге
 async def stop_func(_):
     print('Бот остановлен')
+    global base, cursor
+    stop_base(base, cursor)
     # Дописать завершение работы с БД
 
 # Глобальные переменные

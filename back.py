@@ -2,19 +2,8 @@ import sqlite3
 import re
 import datetime
 
-# Глобальные переменные
-#globals()
-#gbase
-#cursor
 
-#global base, cursor
-# Функция подключения к базе
-# Функция выполняет подключение к базе, выполняет запрос query
-# Если функция выполняет поиск, то возвращаются его результаты
-# mode='search'
-# Если запись или удаление, то True при успешной отработке
-
-# Функция соединения с БД
+# Функция соединения с БД возвращает объект типа sqlite3 (база и курсор)
 def start_base():
     #global base, cursor  # глобальные переменные с именем базы и курсором
     base = sqlite3.connect('users_data.db')
@@ -25,14 +14,14 @@ def start_base():
     else:
         print('Ошибка подключения к базе')
 
+# Функция выполняет подключение к базе, выполняет запрос query
+# Если функция выполняет поиск, то возвращаются его результаты
+# mode='search'
+# Если запись или удаление, то True при успешной отработке
 def base_query(base, cursor, query='', mode=''):
     try:
-        #connection = sqlite3.connect('users_data.db')
-        #cursor = connection.cursor()
         cursor.execute(query)
-        #cursor.close()
         base.commit()
-        #connection.close()
         if mode == 'search':
             answer = cursor.fetchall()  # получение данных из запроса query
             return answer
@@ -42,13 +31,19 @@ def base_query(base, cursor, query='', mode=''):
         print(f'Ошибка:{erorr}')
         return None
 
+# Функция закрытия соединения с базой
+def stop_base(base, cursor):
+    base.commit()
+    cursor.close()
+    base.close()
+    print('Соединение с базой закрыто')
+
 # Функция проверки корректности даты
 def check_date(date):
     out_flag = False         # Выходной флаг функции
     correct_digit = False    # Флаг корректных чисел даты (месяц 01-12, день 01-31)
     # Словарь с количеством дней в месяцах
     date_now = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
-    #print(date_now)
     day_in_month = {1 : 31,
                     2 : 28,
                     3 : 31,
