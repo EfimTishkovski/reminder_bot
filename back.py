@@ -2,6 +2,12 @@ import sqlite3
 import re
 import datetime
 
+# Глобальные переменные
+#globals()
+#gbase
+#cursor
+
+#global base, cursor
 # Функция подключения к базе
 # Функция выполняет подключение к базе, выполняет запрос query
 # Если функция выполняет поиск, то возвращаются его результаты
@@ -10,22 +16,25 @@ import datetime
 
 # Функция соединения с БД
 def start_base():
-    global base, cursor  # глобальные переменные с именем базы и курсором
+    #global base, cursor  # глобальные переменные с именем базы и курсором
     base = sqlite3.connect('users_data.db')
     cursor = base.cursor()
     if base:
         print('База успешно подключена')
+        return base, cursor
+    else:
+        print('Ошибка подключения к базе')
 
-def base_query(query='', mode=''):
+def base_query(base, cursor, query='', mode=''):
     try:
-        connection = sqlite3.connect('users_data.db')
-        cursor = connection.cursor()
+        #connection = sqlite3.connect('users_data.db')
+        #cursor = connection.cursor()
         cursor.execute(query)
-        answer = cursor.fetchall()   # получение данных из запроса query
-        cursor.close()
-        connection.commit()
-        connection.close()
+        #cursor.close()
+        base.commit()
+        #connection.close()
         if mode == 'search':
+            answer = cursor.fetchall()  # получение данных из запроса query
             return answer
         else:
             return True

@@ -20,10 +20,16 @@ loop = asyncio.get_event_loop()    # Создание цикла
 disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
                                                                # Он запустит полинг и цикл с нашей функцией параллельно.
 
-# Информационное сообщение в консоль, запуск функции внизу в полинге
+# Функция начала работы бота, сообщение, запуск в полинге
 async def start_func(_):
     print('Бот запущен')
-    # Дописать здесь подключение к БД
+    global base, cursor
+    base, cursor = start_base()          # Подключение к БД
+
+# Функция завершения работы бота, сообщение, запуск в полинге
+async def stop_func(_):
+    print('Бот остановлен')
+    # Дописать завершение работы с БД
 
 # Глобальные переменные
 user_events_glob = []
@@ -103,7 +109,7 @@ async def event_time(message: types.Message, state: FSMContext):
     write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата'] + ' ' + data_event['Время']}','{data_event['Название']}');"
-    write_event = base_query(write_event_to_base_query)
+    write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
     # Проверка корректности отработки функции
     if write_event is not None:
         print('Событие добавлено успешно')
@@ -118,10 +124,10 @@ async def event_time(message: types.Message, state: FSMContext):
 # Кнопка "Редактировать события" через FSM
 class FSM_edit_event(StatesGroup):
     event_keyboard = State()       # Состояние отображение списка собылий в виду кнопок
-    event_edit = State()           # Сотояние редактирования событий
+    event_edit = State()           # Состояние редактирования событий
     event_new_name = State()       # Состояние получения нового имени
     event_new_date = State()       # Состояние получения новой даты
-    event_new_time = State()       # Cостояние получения пового времени
+    event_new_time = State()       # Cостояние получения нового времени
 
 
 # Начало работы редактирования
@@ -134,12 +140,12 @@ async def edit_events_command(message:types.Message):
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
     global user_events_glob
     user_events_glob.clear()                                   # Очистка глобального массива событий
-    data_from_query = base_query(query, mode='search')
+    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
     # Проверка на ошибку БД
     if data_from_query is not None:
         user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
     else:
-        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибкочка с базой.')
+        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД')
 
     # Инлайновая клавиатура обработки событий.
@@ -247,7 +253,7 @@ async def welcome(message:types.Message):
     # Проверка на наличие пользователя в базе
     # Есть - хорошо, нету - добавить.
     query_user_in_base = f"SELECT * FROM 'users' WHERE [id] = {user_info['id']}"  # Запрос на поиск id пользователя
-    if base_query(query_user_in_base, mode='search'):
+    if base_query(base, cursor, query=query_user_in_base, mode='search'):
         await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я помню тебя.")
     else:
         # Добавление пользователя в базу
@@ -255,7 +261,7 @@ async def welcome(message:types.Message):
         query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
                             f"VALUES ('{user_info['id']}','{user_info['Имя']}'," \
                             f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
-        if base_query(query_user_insert):
+        if base_query(base=base, cursor=cursor, query=query_user_insert):
             print('Добавлен новый пользователь')
     user_info.clear()  # Очистка словаря с данными пользователя
 
@@ -282,7 +288,7 @@ async def help(message:types.Message):
 async def my_events_command(message:types.Message):
     user = message.from_user.id  # получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    user_events = base_query(query, mode='search')
+    user_events = base_query(base, cursor, query=query, mode='search')
     if user_events:
         for element in user_events:
             await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
@@ -301,4 +307,4 @@ async def cickle_func():
 
 if __name__ == '__main__':
     disp.loop.create_task(cickle_func())
-    executor.start_polling(disp, skip_updates=True, on_startup=start_func)
+    executor.start_polling(disp, skip_updates=True, on_startup=start_func, on_shutdown=stop_func)
