@@ -10,7 +10,7 @@ import datetime
 
 # Функция соединения с БД
 def start_base():
-    global base, cursor  # голобальные переменные с именем басы и курсором
+    global base, cursor  # глобальные переменные с именем базы и курсором
     base = sqlite3.connect('users_data.db')
     cursor = base.cursor()
     if base:

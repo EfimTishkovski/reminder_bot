@@ -8,25 +8,26 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 
-
-# Запуск
+#######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
+# Получение токена
 tok = open('TOKEN.txt', 'r')
 TOKEN = tok.read()
 tok.close()
 
 # Инициализация бота
-rem_bot = Bot(token=TOKEN)       # Создание экземпляра бота
-loop = asyncio.get_event_loop()       # Создание цикла
+rem_bot = Bot(token=TOKEN)         # Создание экземпляра бота
+loop = asyncio.get_event_loop()    # Создание цикла
 disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
                                                                # Он запустит полинг и цикл с нашей функцией параллельно.
-# Информационное сообщение в консоль
-if rem_bot:
-    print('Запущено.')
-else:
-    print('Ошибка запуска.')
+
+# Информационное сообщение в консоль, запуск функции внизу в полинге
+async def start_func(_):
+    print('Бот запущен')
+    # Дописать здесь подключение к БД
 
 # Глобальные переменные
 user_events_glob = []
+#######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 
 # Функция получения события от пользователя
 # Создание диалога для ввода события пользователем
@@ -300,4 +301,4 @@ async def cickle_func():
 
 if __name__ == '__main__':
     disp.loop.create_task(cickle_func())
-    executor.start_polling(disp, skip_updates=True)
+    executor.start_polling(disp, skip_updates=True, on_startup=start_func)
