@@ -31,7 +31,6 @@ async def stop_func(_):
     print('Бот остановлен')
     global base, cursor
     stop_base(base, cursor)
-    # Дописать завершение работы с БД
 
 # Глобальные переменные
 user_events_glob = []
@@ -87,9 +86,9 @@ async def event_date(message: types.Message, state: FSMContext):
             await FSM_event_user.next()        # Переход к следующему состоянию машины
             await FSM_event_user.time.set()    # Установка к следующего состоянию машины
             await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
-            print(date_input[1])
+            #print(date_input[1])
         else:
-            print(date_input[1])
+            #print(date_input[1])
             await rem_bot.send_message(message.chat.id, date_input[1])
             await rem_bot.send_message(message.chat.id, 'Введите дату снова\n' + 'Формат даты: ГГГГ-ММ-ДД')
 
@@ -134,12 +133,10 @@ class FSM_edit_event(StatesGroup):
     event_new_date = State()       # Состояние получения новой даты
     event_new_time = State()       # Cостояние получения нового времени
 
-
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
 async def edit_events_command(message:types.Message):
     await FSM_edit_event.event_keyboard.set()     # Установка нового состояния МС
-
     # Работа функции
     user = message.from_user.id  # получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
@@ -236,8 +233,6 @@ async def edit_time(message:types.Message, state:FSMContext):
     data = data.as_dict()
     print(data)
     print(user_events_glob[0][0], user_events_glob[0][2]) # отсюда можно взять имя и id пользователя
-    # дописать внесение изменений в базу
-    #date_time = data['Новая дата события'] + ' ' + data['Новое время']
     replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{data['Новая дата события'] + ' ' + data['Новое время']}'," \
                     f"[event] = '{data['Новое имя события']}'" \
                     f"WHERE [id] = {user_events_glob[0][0]} AND [event] = '{data['Старое имя события']}';"
@@ -313,7 +308,7 @@ async def my_events_command(message:types.Message):
             await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
         await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')
     else:
-        print('Записей нет.')
+        #print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
 # Фоновая функция
