@@ -176,20 +176,22 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 
 # Обработчик события(обновления) имя записанное в callback_data
 @disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event.event_keyboard)
-async def edit_events_button(callback : types.CallbackQuery):
+async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
+    event = callback.data.replace('users_events_button', '')  # Вытягиваем название события
+    async with state.proxy() as data:
+        data['Старое имя события'] = event
     await FSM_edit_event.next()
     await FSM_edit_event.event_edit.set()
-    event = callback.data.replace('users_events_button','')  # Вытягиваем название события
     # Инлайновая клавиатура обработки событий.
     inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
     edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
     cancel_button = InlineKeyboardButton(text='Отмена', callback_data='cancel')  # Кнопка отмена
     inline_key.add(edit_button, cancel_button)
-
+    # Вывод пользователю
     for line in user_events_glob:
         if event in line:
             await callback.message.answer('Событие: ' + f'{line[4]}\n' +
-                                          'Дата: ' + f'{line[3]}', reply_markup=inline_key)  # Вывод пользователю
+                                          'Дата: ' + f'{line[3]}', reply_markup=inline_key)
             break
     else:
         print('Ошибка при поиске события')   # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
@@ -199,7 +201,9 @@ async def edit_events_button(callback : types.CallbackQuery):
 
 # Начало диалога для получения новых данных нового имени события
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
-async def edit_current_event(callback : types.CallbackQuery):
+async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
+    #async with state.proxy() as data:
+        #data['Старое имя события'] = user_events_glob[]
     await callback.message.answer('Введите новое имя события.')
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_name.set()
@@ -234,6 +238,7 @@ async def edit_time(message:types.Message, state:FSMContext):
         data['Новое веремя'] = message.text
     data = data.as_dict()
     print(data)
+    print(user_events_glob[0][0], user_events_glob[0][2]) # отсюда можно взять имя и id пользователя
     # дописать внесение изменений в базу
 
     await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
