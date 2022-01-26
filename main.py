@@ -201,9 +201,7 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
 
 # Начало диалога для получения новых данных нового имени события
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
-async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
-    #async with state.proxy() as data:
-        #data['Старое имя события'] = user_events_glob[]
+async def edit_current_event(callback : types.CallbackQuery):
     await callback.message.answer('Введите новое имя события.')
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_name.set()
@@ -235,13 +233,23 @@ async def edit_date(message:types.Message, state:FSMContext):
 @disp.message_handler(state=FSM_edit_event.event_new_time)
 async def edit_time(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
-        data['Новое веремя'] = message.text
+        data['Новое время'] = message.text
     data = data.as_dict()
     print(data)
     print(user_events_glob[0][0], user_events_glob[0][2]) # отсюда можно взять имя и id пользователя
     # дописать внесение изменений в базу
-
-    await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
+    date_time = data['Новая дата события'] + ' ' + data['Новое время']
+    replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{date_time}'," \
+                    f"[event] = '{data['Новое имя события']}'" \
+                    f"WHERE [id] = {user_events_glob[0][0]} AND [event] = '{data['Старое имя события']}';"
+    if base_query(base=base, cursor=cursor, query=replace_query):
+        await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
+        await rem_bot.send_message(message.chat.id, f"Событие: {data['Новое имя события']}\n"
+                                                    f"Дата: {data['Новая дата события']}\n"
+                                                    f"Время: {data['Новое время']}")
+        print('Замена произведена успешно')
+    else:
+        print('Ошибка при замене события')
     await state.finish()
 
 
