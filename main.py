@@ -67,11 +67,14 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
     # Дописать функцию проверки одинаковых событий (по названию)
-    async with state.proxy() as data:               # Узнать что это (вроде запись данных)
-        data['Название'] = message.text             # получение данных от пользователя в словарь
-    await FSM_event_user.next()                     # Переход к следующему состоянию машины
-    await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
-    await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
+    if repeat_name(message.text, base=base, cursor=cursor):
+        async with state.proxy() as data:               # Узнать что это (вроде запись данных)
+            data['Название'] = message.text             # получение данных от пользователя в словарь
+        await FSM_event_user.next()                     # Переход к следующему состоянию машины
+        await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
+        await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
+    else:
+        await message.reply('Такое событие уже есть. Придумайте другое название.')
 
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
@@ -210,15 +213,11 @@ async def edit_current_event(callback : types.CallbackQuery):
 # Получение нового имени
 @ disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
-    # Проверка имени на совпадения
-    if repeat_name(message.text, base, cursor):
-        async with state.proxy() as data:
-            data['Новое имя события'] = message.text
-        await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
-        await FSM_edit_event.next()
-        await FSM_edit_event.event_new_date.set()
-    else:
-        await message.reply('Такое событие уже есть. Придумайте другое имя.')
+    async with state.proxy() as data:
+        data['Новое имя события'] = message.text
+    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_date.set()
 
 # Получение новой даты
 @disp.message_handler(state=FSM_edit_event.event_new_date)
@@ -238,8 +237,8 @@ async def edit_time(message:types.Message, state:FSMContext):
     print(data)
     print(user_events_glob[0][0], user_events_glob[0][2]) # отсюда можно взять имя и id пользователя
     # дописать внесение изменений в базу
-    date_time = data['Новая дата события'] + ' ' + data['Новое время']
-    replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{date_time}'," \
+    #date_time = data['Новая дата события'] + ' ' + data['Новое время']
+    replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{data['Новая дата события'] + ' ' + data['Новое время']}'," \
                     f"[event] = '{data['Новое имя события']}'" \
                     f"WHERE [id] = {user_events_glob[0][0]} AND [event] = '{data['Старое имя события']}';"
     if base_query(base=base, cursor=cursor, query=replace_query):
