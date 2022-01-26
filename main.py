@@ -170,7 +170,7 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
     if current_state is None:
         return
 
-    await callback.message.answer('Редактирование отменено')  # Вывод пользователю
+    await callback.message.answer('Отменено')  # Вывод пользователю
     await callback.answer()
     await state.finish()
 
@@ -249,6 +249,42 @@ async def edit_time(message:types.Message, state:FSMContext):
 
 #####################################################################################################################
 
+####################################### УДАЛЕНИЕ СОБЫТИЯ ##############################################################
+# Кнопка "Удалить событие" через FSM
+class FSM_delete_event(StatesGroup):
+    event_keyboard = State()       # Состояние отображение списка собылий в виду кнопок
+    event_delete = State()         # Состояние удаления событий
+
+# Функция кнопки "Удалить событие"
+@disp.message_handler(lambda message: message.text == 'Удалить событие', state=None)
+async def show_event(message:types.Message):
+    await FSM_delete_event.event_keyboard.set()                      # Установка нового состояния МС
+    user = message.from_user.id                                      # Получаем имя пользователя
+    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+    global user_events_glob
+    user_events_glob.clear()                                   # Очистка глобального массива событий
+    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
+    # Проверка на корректную отработку запроса в БД
+    if data_from_query is not None:
+        user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
+    else:
+        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
+        print('Ошибка с БД при удалении')
+
+    # Инлайновая клавиатура обработки событий.
+    # Массив кнопок с названиями событий
+    button_mass = []
+    for line in user_events_glob:
+        button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data=f'users_events_button{line[4]}'))
+
+    # Создание клавиатуры
+    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
+    inline_key.add(*button_mass)                    # добавление массива кнопок в объект клавиатуры
+    inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
+    await message.answer('События в кнопках', reply_markup=inline_key)
+
+
+####################################### УДАЛЕНИЕ СОБЫТИЯ ##############################################################
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
 async def welcome(message:types.Message):
@@ -284,8 +320,9 @@ async def welcome(message:types.Message):
     btn_create_event = types.KeyboardButton('Добавить событие')    # Кнопка создания нового события
     btn_my_event = types.KeyboardButton('Показать мои события')    # Кнопка просмотра активных событий пользователя
     btn_event_edit = types.KeyboardButton('Редактировать события') # Кнопка редактирования активных событий пользователя
+    btn_delete_event = types.KeyboardButton('Удалить событие')     # Кнопка удаления события
     markup.row(btn_create_event, btn_my_event)            # Добавление кнопок в первый ряд
-    markup.row(btn_event_edit)                            # Добавление кнопок во второй ряд
+    markup.row(btn_event_edit, btn_delete_event)          # Добавление кнопок во второй ряд
     await rem_bot.send_message(message.chat.id, 'Кнопки появятся ниже', reply_markup=markup)
 
 # Хелп
@@ -295,9 +332,10 @@ async def help(message:types.Message):
                                '/start перезапуск\n' +
                                'Кнопка "Добавить событие" - добавить новое событие\n' +
                                'Кнопка "Показать мои события" - показывает все активные события пользователя запустившего бот\n' +
-                               'Кнопка "Редактировать события" - открывает менюшку редактирования событий')
+                               'Кнопка "Редактировать события" - открывает менюшку редактирования событий\n' +
+                               'Кнопка "Удалить событие" - удаляет событие')
 
-# Функция принятия сообщения от пользователя (реакция нажатия на кнопки "Показать мои события")
+# Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
 async def my_events_command(message:types.Message):
     user = message.from_user.id  # получаем имя пользователя
@@ -310,6 +348,9 @@ async def my_events_command(message:types.Message):
     else:
         #print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
+
+
+
 
 # Фоновая функция
 async def cickle_func():
