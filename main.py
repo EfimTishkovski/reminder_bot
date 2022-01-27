@@ -257,10 +257,12 @@ class FSM_delete_event(StatesGroup):
 
 # Функция кнопки "Удалить событие"
 @disp.message_handler(lambda message: message.text == 'Удалить событие', state=None)
-async def show_event(message:types.Message):
+async def show_event(message:types.Message, state:FSMContext):
     await FSM_delete_event.event_keyboard.set()                      # Установка нового состояния МС
     user = message.from_user.id                                      # Получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+    async with state.proxy() as data:
+        data['id'] = user
     global user_events_glob
     user_events_glob.clear()                                   # Очистка глобального массива событий
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
@@ -302,9 +304,14 @@ async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
 async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         data = data.as_dict()
-    print(f"Событие {data['Событие']} удалено")
-    # Дописать удаление из базы
-    delete_query = ''
+    delete_query = f"DELETE FROM 'event_from_users' WHERE [event] = '{data['Событие']}' " \
+                   f"AND [id] = '{data['id']}' "
+    if base_query(base=base, cursor=cursor, query=delete_query):
+        print(f"Событие {data['Событие']} удалено id: {data['id']}")
+        await callback.message.answer(f"Удалено событие: {data['Событие']}")
+    else:
+        await callback.message.answer('Ооп! Ошибочка! Удаление не сработало.')
+        print('ошибка удаления из базы')
     await callback.answer()
     await state.finish()
 
@@ -322,7 +329,6 @@ async def welcome(message:types.Message):
                  'Имя': message.from_user.first_name,
                  'Имя пользователя': message.from_user.username,
                  'Дата': date}
-    print(user_info)
 
     # Проверка на наличие пользователя в базе
     # Есть - хорошо, нету - добавить.
@@ -337,6 +343,7 @@ async def welcome(message:types.Message):
                             f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
         if base_query(base=base, cursor=cursor, query=query_user_insert):
             print('Добавлен новый пользователь')
+            print(user_info)
     user_info.clear()  # Очистка словаря с данными пользователя
 
     # Создание кнопок интерфейса бота
@@ -370,7 +377,6 @@ async def my_events_command(message:types.Message):
             await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
         await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')
     else:
-        #print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
 # Запуск
