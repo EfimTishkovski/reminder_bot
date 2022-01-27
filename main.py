@@ -283,6 +283,22 @@ async def show_event(message:types.Message):
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
     await message.answer('События в кнопках', reply_markup=inline_key)
 
+# Подтверждение удаления
+@disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_delete_event.event_keyboard)
+async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
+    event = callback.data.replace('users_events_button', '')   # Вытягиваем название события
+    inline_key = InlineKeyboardMarkup(row_width=2)
+    inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'),  # Кнопка отмена (работает один на всех хэндлер)
+                   InlineKeyboardButton(text='Удалить', callback_data='delete')) # Кнопка удалить
+    await callback.message.answer(event, reply_markup=inline_key)
+    await callback.answer()
+    #await state.finish()
+
+# Удаление
+#@disp.callback_query_handler(Text(startswith='delete'), state=FSM_delete_event.event_delete)
+
+
+
 
 ####################################### УДАЛЕНИЕ СОБЫТИЯ ##############################################################
 # Стартовое сообщение
