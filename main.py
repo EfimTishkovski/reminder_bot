@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
-
+from message_func import *
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -252,7 +252,7 @@ async def edit_time(message:types.Message, state:FSMContext):
 ####################################### УДАЛЕНИЕ СОБЫТИЯ ##############################################################
 # Кнопка "Удалить событие" через FSM
 class FSM_delete_event(StatesGroup):
-    event_keyboard = State()       # Состояние отображение списка собылий в виду кнопок
+    event_keyboard = State()       # Состояние отображение списка событий в виде кнопок
     event_delete = State()         # Состояние удаления событий
 
 # Функция кнопки "Удалить событие"
@@ -303,6 +303,8 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         data = data.as_dict()
     print(f"Событие {data['Событие']} удалено")
+    # Дописать удаление из базы
+    delete_query = ''
     await callback.answer()
     await state.finish()
 
@@ -371,16 +373,7 @@ async def my_events_command(message:types.Message):
         #print('Записей нет.')
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
 
-
-
-
-# Фоновая функция
-async def cickle_func():
-    print('Запуск фоновой функции')
-    while True:
-        print('Фоновая функция работает')
-        await asyncio.sleep(20)
-
+# Запуск
 if __name__ == '__main__':
     disp.loop.create_task(cickle_func())
     executor.start_polling(disp, skip_updates=True, on_startup=start_func, on_shutdown=stop_func)
