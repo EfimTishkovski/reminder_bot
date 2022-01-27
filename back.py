@@ -98,8 +98,44 @@ def check_date(date):
         return False, 'Формат даты не корректен'
 
 # Функция проверки корректности времени
-def check_time(time):
-    pass
+# date - дата от пользователя, проверяется предыдущей функцией имеет фотмат ГГГГ-ММ-ДД
+def check_time(time, date=''):
+    input_flag = False
+    time_now = datetime.datetime.now().strftime('%H-%M')     # Текущее время
+    date_now = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
+    date_mass_now = map(int, date_now.split('-'))
+    date_mass_now = list(date_mass_now)                      # Массив текущей даты (int)
+    date_mass = map(int, date.split('-'))
+    date_mass = list(date_mass)                              # Массив пользовательской даты (int)
+
+    # Входной шаблон
+    if re.fullmatch(r'\d{1,2}-\d{2}', time) is not None:
+        time_mass = map(int, str(time).split('-'))
+        time_mass = list(time_mass)
+        time_mass_now = map(int, str(time_now).split('-'))
+        time_mass_now = list(time_mass_now)
+        # Проверка на коррекные числа
+        if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
+            input_flag = True
+        else:
+            return False, f'Числа не корректны, часы 0-23, минуты 0-59.'
+
+    else:
+        return False, 'Формат времени не коректен, введите время в формате ЧЧ-ММ.'
+
+    # Определение следующего дня для времени
+    # Проверка на ранее(прошедшее время)
+    if input_flag:
+        if date_mass[0] >= date_mass_now[0] and date_mass[1] >= date_mass_now[1] and date_mass[2] > date_mass_now[2]:
+            return True      # Если время заложено на будущий день и корректно, то оно принимается
+
+        else:
+            # Если время на сегодняшний день проверяем дальше
+            if time_mass[0] >= time_mass_now[0] and time_mass[1] > time_mass_now[1]:
+                return True  # Время корректно, ещё не прошло, принимается
+            else:
+                return False, 'Время уже прошло'
+
 
 # Функция проверки имени события в базе (повторяющиеся имена)
 # True - норм, не повторяется
