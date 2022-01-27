@@ -53,7 +53,7 @@ async def event_start(message: types.Message):
 
 # Выход из состояний (отмена для диалога ввода даты)
 # "*" - любое состояние МС
-@disp.message_handler(state="*", commands='отмена')  # хэндлер срабатывает по команде /отмена
+@disp.message_handler(commands=['отмена'], state="*")  # хэндлер срабатывает по команде /отмена
 @disp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()  # Получаем текущее состояние МС
@@ -61,15 +61,15 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     if current_state is None:
         return
     await state.finish()
-    await message.answer('Ok')
+    await message.answer('Oтмена')
 
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
-    # Дописать функцию проверки одинаковых событий (по названию)
-    if repeat_name(message.text, base=base, cursor=cursor):
+    id = message.from_user.id                           # id пользователя
+    if repeat_name(message.text.lower(), id, base=base, cursor=cursor):
         async with state.proxy() as data:               # Узнать что это (вроде запись данных)
-            data['Название'] = message.text             # получение данных от пользователя в словарь
+            data['Название'] = message.text.lower()     # получение данных от пользователя в словарь
         await FSM_event_user.next()                     # Переход к следующему состоянию машины
         await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
         await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
@@ -178,7 +178,7 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 # Обработчик события(обновления) имя записанное в callback_data
 @disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event.event_keyboard)
 async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
-    event = callback.data.replace('users_events_button', '')  # Вытягиваем название события
+    event = callback.data.replace('users_events_button', '').lower()  # Вытягиваем название события
     async with state.proxy() as data:
         data['Старое имя события'] = event
     await FSM_edit_event.next()
@@ -212,7 +212,7 @@ async def edit_current_event(callback : types.CallbackQuery):
 @ disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
     async with state.proxy() as data:
-        data['Новое имя события'] = message.text
+        data['Новое имя события'] = message.text.lower()
     await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
@@ -288,13 +288,15 @@ async def show_event(message:types.Message, state:FSMContext):
 async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
     await FSM_delete_event.event_delete.set()
-    event = callback.data.replace('users_events_button', '')   # Вытягиваем название события
+    event = callback.data.replace('users_events_button', '')                # Вытягиваем название события
     async with state.proxy() as data:
         data['Событие'] = event
+    query = f"SELECT date_time FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
+    date = base_query(base=base, cursor=cursor, query=query, mode='search') # Получаем время события
     inline_key = InlineKeyboardMarkup(row_width=2)
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'),  # Кнопка отмена (работает один на всех хэндлер)
                    InlineKeyboardButton(text='Удалить', callback_data='delete')) # Кнопка удалить
-    await callback.message.answer(event, reply_markup=inline_key)
+    await callback.message.answer(f"Событие: {event}\nДата: {date[0][0]}", reply_markup=inline_key)
     await callback.answer()
 
 # Удаление

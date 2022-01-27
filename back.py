@@ -104,9 +104,8 @@ def check_time(time):
 # Функция проверки имени события в базе (повторяющиеся имена)
 # True - норм, не повторяется
 # False - имя уже занято
-# Дописать проверку по id у разных пользователей могут быть события с одинаковыми именами.
-def repeat_name(name_event, base, cursor):
-    query = f"SELECT * FROM 'event_from_users' WHERE [event] = '{name_event}'"
+def repeat_name(name_event, id, base, cursor):
+    query = f"SELECT * FROM 'event_from_users' WHERE [event] = '{name_event}' AND [id] = {id}"
     if base_query(base=base, cursor=cursor, query=query, mode='search'):
         return False  # Имя уже занято
     else:
