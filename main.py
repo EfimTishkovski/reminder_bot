@@ -1,4 +1,3 @@
-#import asyncio
 from aiogram import Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
 from aiogram.dispatcher.filters.state import State, StatesGroup
