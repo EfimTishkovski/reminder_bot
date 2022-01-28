@@ -57,7 +57,7 @@ def check_date(date):
                     11 : 30,
                     12 : 31}
 
-    if re.fullmatch(r'\d{4}-\d{1,2}-\d{1,2}', date) is not None:
+    if re.fullmatch(r'\d{4,10}-\d{1,2}-\d{1,2}', date) is not None:
 
         date_mass = map(int, date.split('-'))
         date_mass = list(date_mass)

@@ -214,11 +214,14 @@ async def edit_current_event(callback : types.CallbackQuery):
 # Получение нового имени
 @ disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
-    async with state.proxy() as data:
-        data['Новое имя события'] = message.text.lower()
-    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
-    await FSM_edit_event.next()
-    await FSM_edit_event.event_new_date.set()
+    if repeat_name(message.text, message.from_user.id, base=base, cursor=cursor):
+        async with state.proxy() as data:
+            data['Новое имя события'] = message.text.lower()
+        await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
+        await FSM_edit_event.next()
+        await FSM_edit_event.event_new_date.set()
+    else:
+        await message.reply('Такое событие уже есть. Придумайте новое имя.')
 
 # Получение новой даты
 @disp.message_handler(state=FSM_edit_event.event_new_date)
