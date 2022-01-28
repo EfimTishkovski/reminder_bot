@@ -94,31 +94,35 @@ async def event_date(message: types.Message, state: FSMContext):
 # Завершение диалога
 @disp.message_handler(state=FSM_event_user.time)
 async def event_time(message: types.Message, state: FSMContext):
+    # Словарь с данными пользователя
+    user_info = {'id': message.from_user.id,
+                 'Имя': message.from_user.first_name,
+                 'Имя пользователя': message.from_user.username}
     async with state.proxy() as data:
-        # дописать маску и проверку ввода
-        data['Время'] = message.text
-        # Словарь с данными пользователя
-        user_info = {'id': message.from_user.id,
-                     'Имя': message.from_user.first_name,
-                     'Имя пользователя': message.from_user.username}
+        time_input = check_time(message.text, str(data['Дата']))  # Проверка времени на корректность
+        if time_input[0]:
+            data['Время'] = message.text
 
-        data_event = data.as_dict()   # Данные в памяти в виде словаря
-    await rem_bot.send_message(message.chat.id, 'Событие: \n' +
+            data_event = data.as_dict()   # Данные в памяти в виде словаря
+            await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
-    # Запись события в базу
-    write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
+            # Запись события в базу
+            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата'] + ' ' + data_event['Время']}','{data_event['Название']}');"
-    write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
-    # Проверка корректности отработки функции
-    if write_event is not None:
-        await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
-    else:
-        await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
-    await state.finish()  # Завершение работы МС
+            write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
+            # Проверка корректности отработки функции
+            if write_event is not None:
+                await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
+            else:
+                await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
+            await state.finish()  # Завершение работы МС
+        else:
+            await message.reply(time_input[1])
+            await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ-ММ.')
 
 ############################################ СОЗДАНИЕ #################################################################
 
@@ -220,30 +224,47 @@ async def edit_name(message : types.Message, state : FSMContext):
 # Получение новой даты
 @disp.message_handler(state=FSM_edit_event.event_new_date)
 async def edit_date(message:types.Message, state:FSMContext):
-    async with state.proxy() as data:
-        data['Новая дата события'] = message.text
-    await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
-    await FSM_edit_event.next()
-    await FSM_edit_event.event_new_time.set()
+    new_date = check_date(message.text)  # Проверка корректности даты
+    if new_date[0]:
+        async with state.proxy() as data:
+            data['Новая дата события'] = message.text
+        await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
+        await FSM_edit_event.next()
+        await FSM_edit_event.event_new_time.set()
+    else:
+        await message.reply(new_date[1])
+        await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
 
 # Получение нового времени
 @disp.message_handler(state=FSM_edit_event.event_new_time)
 async def edit_time(message:types.Message, state:FSMContext):
+    # Дописать проверку
+    flag = False # Флаг чтобы убрать множественную не понятную вложенность
     async with state.proxy() as data:
-        data['Новое время'] = message.text
-    data = data.as_dict()
-    replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{data['Новая дата события'] + ' ' + data['Новое время']}'," \
-                    f"[event] = '{data['Новое имя события']}'" \
-                    f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
-    if base_query(base=base, cursor=cursor, query=replace_query):
+        new_time = check_time(message.text, data['Новая дата события'])
+        if new_time[0]:
+            data['Новое время'] = message.text
+            data = data.as_dict()
+            replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{data['Новая дата события'] + ' ' + data['Новое время']}'," \
+                            f"[event] = '{data['Новое имя события']}'" \
+                            f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
+            flag = base_query(base=base, cursor=cursor, query=replace_query)
+            # Перенести сюда вызов функции записи в базу
+        else:
+            await message.reply(new_time[1])
+            await rem_bot.send_message(message.chat.id, 'Введите время снова.')
+
+
+    if flag:
         await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
         await rem_bot.send_message(message.chat.id, f"Событие: {data['Новое имя события']}\n"
                                                     f"Дата: {data['Новая дата события']}\n"
                                                     f"Время: {data['Новое время']}")
         print('Замена произведена успешно')
+        await state.finish()
     else:
         print('Ошибка при замене события')
-    await state.finish()
+        #await state.finish()
 
 ######################################## РЕДАКТИРОВАНИЕ ###############################################################
 

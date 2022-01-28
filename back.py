@@ -98,7 +98,7 @@ def check_date(date):
         return False, 'Формат даты не корректен'
 
 # Функция проверки корректности времени
-# date - дата от пользователя, проверяется предыдущей функцией имеет фотмат ГГГГ-ММ-ДД
+# date - дата от пользователя, проверяется предыдущей функцией имеет формат ГГГГ-ММ-ДД
 def check_time(time, date=''):
     input_flag = False
     time_now = datetime.datetime.now().strftime('%H-%M')     # Текущее время
@@ -114,27 +114,37 @@ def check_time(time, date=''):
         time_mass = list(time_mass)
         time_mass_now = map(int, str(time_now).split('-'))
         time_mass_now = list(time_mass_now)
-        # Проверка на коррекные числа
+        # Проверка на корректные числа
         if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
             input_flag = True
         else:
             return False, f'Числа не корректны, часы 0-23, минуты 0-59.'
 
     else:
-        return False, 'Формат времени не коректен, введите время в формате ЧЧ-ММ.'
+        return False, 'Формат времени не корректен, введите время в формате ЧЧ-ММ.'
 
     # Определение следующего дня для времени
     # Проверка на ранее(прошедшее время)
     if input_flag:
-        if date_mass[0] >= date_mass_now[0] and date_mass[1] >= date_mass_now[1] and date_mass[2] > date_mass_now[2]:
-            return True      # Если время заложено на будущий день и корректно, то оно принимается
-
+        if date_mass[0] > date_mass_now[0]:
+            return True, ''         # Если время заложено на будущий день и корректно, то оно принимается
         else:
-            # Если время на сегодняшний день проверяем дальше
-            if time_mass[0] >= time_mass_now[0] and time_mass[1] > time_mass_now[1]:
-                return True  # Время корректно, ещё не прошло, принимается
+            if date_mass[1] > date_mass_now[1]:
+                return True, ''     # Если время заложено на будущий день и корректно, то оно принимается
             else:
-                return False, 'Время уже прошло'
+                if date_mass[2] > date_mass_now[2]:
+                    return True, ''  # Если время заложено на будущий день и корректно, то оно принимается
+                elif date_mass[2] == date_mass_now[2]:
+
+                    # Если время на сегодняшний день проверяем дальше
+                    if time_mass[0] >= time_mass_now[0] and time_mass[1] > time_mass_now[1]:
+                        return True, ''  # Время корректно, ещё не прошло, принимается
+                    else:
+                        return False, 'Время уже прошло'
+                else:
+                    return False, 'Дата как-то уже прошла, непонятно... совсем...'
+
+
 
 
 # Функция проверки имени события в базе (повторяющиеся имена)
