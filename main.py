@@ -409,5 +409,5 @@ async def my_events_command(message:types.Message):
 
 # Запуск
 if __name__ == '__main__':
-    disp.loop.create_task(cickle_func())
+    disp.loop.create_task(reminer_func())
     executor.start_polling(disp, skip_updates=True, on_startup=start_func, on_shutdown=stop_func)
