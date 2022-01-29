@@ -109,9 +109,9 @@ async def event_time(message: types.Message, state: FSMContext):
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
             # Запись события в базу
-            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date_time],[event]) " \
+            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time],[event]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата'] + ' ' + data_event['Время']}','{data_event['Название']}');"
+                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Проверка корректности отработки функции
             if write_event is not None:
@@ -158,7 +158,7 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     # Массив кнопок с названиями событий
     button_mass = []
     for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data=f'users_events_button{line[4]}'))
+        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -194,8 +194,9 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     # Вывод пользователю
     for line in user_events_glob:
         if event in line:
-            await callback.message.answer('Событие: ' + f'{line[4]}\n' +
-                                          'Дата: ' + f'{line[3]}', reply_markup=inline_key)
+            await callback.message.answer('Событие: ' + f'{line[5]}\n' +
+                                          'Дата: ' + f'{line[3]}\n' +
+                                          'Время: ' + f'{line[4]}', reply_markup=inline_key)
             break
     else:
         print('Ошибка при поиске события')   # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
@@ -214,7 +215,10 @@ async def edit_current_event(callback : types.CallbackQuery):
 # Получение нового имени
 @ disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
-    if repeat_name(message.text, message.from_user.id, base=base, cursor=cursor):
+    async with state.proxy() as data:
+        old_name = data['Старое имя события']
+    # События или нет в базе или пользователь оставляет старое имя
+    if repeat_name(message.text.lower(), message.from_user.id, base=base, cursor=cursor) or old_name == message.text.lower():
         async with state.proxy() as data:
             data['Новое имя события'] = message.text.lower()
         await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
@@ -247,7 +251,8 @@ async def edit_time(message:types.Message, state:FSMContext):
         if new_time[0]:
             data['Новое время'] = message.text
             data = data.as_dict()
-            replace_query = f"UPDATE 'event_from_users' SET [date_time] = '{data['Новая дата события'] + ' ' + data['Новое время']}'," \
+            replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Новая дата события']}'," \
+                            f"[time] = '{data['Новое время']}'," \
                             f"[event] = '{data['Новое имя события']}'" \
                             f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
             flag = base_query(base=base, cursor=cursor, query=replace_query)
@@ -298,7 +303,7 @@ async def show_event(message:types.Message, state:FSMContext):
     # Массив кнопок с названиями событий
     button_mass = []
     for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[4]}', callback_data=f'users_events_button{line[4]}'))
+        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -314,12 +319,12 @@ async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     event = callback.data.replace('users_events_button', '')                # Вытягиваем название события
     async with state.proxy() as data:
         data['Событие'] = event
-    query = f"SELECT date_time FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
+    query = f"SELECT [date],[time] FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
     date = base_query(base=base, cursor=cursor, query=query, mode='search') # Получаем время события
     inline_key = InlineKeyboardMarkup(row_width=2)
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'),  # Кнопка отмена (работает один на всех хэндлер)
                    InlineKeyboardButton(text='Удалить', callback_data='delete')) # Кнопка удалить
-    await callback.message.answer(f"Событие: {event}\nДата: {date[0][0]}", reply_markup=inline_key)
+    await callback.message.answer(f"Событие: {event}\nДата: {date[0][0]}\nВремя: {date[0][1]}", reply_markup=inline_key)
     await callback.answer()
 
 # Удаление
@@ -397,7 +402,7 @@ async def my_events_command(message:types.Message):
     user_events = base_query(base, cursor, query=query, mode='search')
     if user_events:
         for element in user_events:
-            await rem_bot.send_message(message.chat.id, f'{element[3]} {element[4]}')
+            await rem_bot.send_message(message.chat.id, f'{element[5]} {element[3]} {element[4]}')
         await rem_bot.send_message(message.chat.id, f'Всего {len(user_events)} событий.')
     else:
         await rem_bot.send_message(message.chat.id, 'Записей нет.')
