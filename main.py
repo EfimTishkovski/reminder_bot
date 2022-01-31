@@ -63,7 +63,7 @@ async def reminer_func():
         for line in event_mass:
             if line[3] != 'done':
                 print(line)
-                #await rem_bot.send_message(840083935, '.')
+                await rem_bot.send_message(line[0], line[2])    # Отсылка сообщения пользователю
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 back.base_query(base=base, cursor=cursor, query=query)
