@@ -1,17 +1,25 @@
 import asyncio
 import datetime
-# Фоновая функция
-async def reminer_func():
+import back
+
+# Фоновая функция отслеживания событий
+async def remin_func():
     now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
-    now_time_mass = now_time.split('-')
-    # Запуск не позднее 58 секунды, чтобы функция успевала отработать и не ошибалась минутой
+    now_date = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
+    now_time_mass = list(map(int, now_time.split('-')))
+    print(now_time[:-3])
+    print(now_date)
+    second = (60 - int(now_time_mass[2])) + 1
+    print(second)
+    # Запуск в 01 секунду любой минуты
     while True:
-        if int(now_time_mass[2]) < 58:
-            break
-        else:
-            await asyncio.sleep(3)
-            break
+        await asyncio.sleep(1)
+        break
     print('Запуск фоновой функции')
     while True:
         print('Фоновая функция работает')
-        await asyncio.sleep(20)
+        await asyncio.sleep(10)
+        global base, cursor
+        query = f"SELECT event FROM 'event_from_users' WHERE [date] = '{now_date}' AND [time] = '{now_time}'"
+        event_mass = back.base_query(base=base, cursor=cursor, query=query, mode='search')
+        print(event_mass)

@@ -35,6 +35,32 @@ async def stop_func(_):
 user_events_glob = []
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
+######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
+# Фоновая функция отслеживания событий
+async def reminer_func():
+    now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
+    now_date = datetime.datetime.now().strftime('%Y-%d-%m')  # Текущая дата
+    now_time_mass = list(map(int, now_time.split('-')))
+    print(now_time[:-3])
+    print(now_date)
+    second = (60 - int(now_time_mass[2])) + 1
+    print(second)
+    # Запуск в 01 секунду любой минуты
+    while True:
+        await asyncio.sleep(1)
+        break
+    print('Запуск фоновой функции')
+    while True:
+        print('Фоновая функция работает')
+        await asyncio.sleep(10)              # Выдержка стоит именно тут, чтобы успела отработать start_base
+        global base, cursor                  # и орпределить переменные base b cursor, это важно, иначе ошибка!!!
+        query = f"SELECT id, user_name, event FROM 'event_from_users' WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
+        event_mass = back.base_query(base=base, cursor=cursor, query=query, mode='search')
+        print(event_mass)
+
+
+######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
+
 ########################################## СОЗДАНИЕ ###################################################################
 # Функция получения события от пользователя
 # Создание диалога для ввода события пользователем
