@@ -57,10 +57,13 @@ async def reminer_func():
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
+        # Получение событий из базы
         event_mass = back.base_query(base=base, cursor=cursor, query=query, mode='search')
+        # Отсылка событий по одному
         for line in event_mass:
             if line[3] != 'done':
                 print(line)
+                #await rem_bot.send_message(840083935, '.')
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 back.base_query(base=base, cursor=cursor, query=query)
