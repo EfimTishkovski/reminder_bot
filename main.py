@@ -41,7 +41,6 @@ async def reminer_func():
     now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
     now_date = datetime.datetime.now().strftime('%Y-%d-%m')  # Текущая дата
     now_time_mass = list(map(int, now_time.split('-')))
-    print(now_time[:-3])
     second = (60 - int(now_time_mass[2])) + 1
     # Стабильный запуск, base и cursor успеют определиться
     if second < 5:
@@ -56,16 +55,18 @@ async def reminer_func():
         now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
         print(now_time[:-3])
         global base, cursor
-        query = f"SELECT id, user_name, event, status FROM 'event_from_users' WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
+        query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
+                f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
         event_mass = back.base_query(base=base, cursor=cursor, query=query, mode='search')
         for line in event_mass:
             if line[3] != 'done':
                 print(line)
-                query = f"UPDATE 'event_from_users' SET [status] = 'done' WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
+                query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
+                        f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 back.base_query(base=base, cursor=cursor, query=query)
 
         event_mass.clear()
-        await asyncio.sleep(30)  # Задержка опроса базы
+        await asyncio.sleep(50)  # Задержка опроса базы
 
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 
