@@ -151,6 +151,11 @@ async def event_time(message: types.Message, state: FSMContext):
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
+            # Дописать отметку в журнале
+            time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+            log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                        f"VALUES ({user_info['id']}, '{user_info['Имя']}','{data_event['Название']}', 'create', '{time_now}')"
+            base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
             # Проверка корректности отработки функции
             if write_event is not None:
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')

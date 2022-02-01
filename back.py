@@ -136,8 +136,13 @@ def check_time(time, date=''):
                     return True, ''  # Если время заложено на будущий день и корректно, то оно принимается
                 elif date_mass[2] == date_mass_now[2]:
                     # Если время на сегодняшний день проверяем дальше
-                    if time_mass[0] >= time_mass_now[0] and time_mass[1] > time_mass_now[1]:
-                        return True, ''  # Время корректно, ещё не прошло, принимается
+                    if time_mass[0] > time_mass_now[0]:        # проверяем часы
+                        return True, ''                        # Время корректно, ещё не прошло, принимается
+                    elif time_mass[0] == time_mass_now[0]:
+                        if time_mass[1] > time_mass_now[1]:    # Проверяем минуты
+                            return True, ''                    # Принято
+                        elif time_mass[1] == time_mass_now[1]:
+                            return False, 'Это прямо сейчас! Давай, действуй, не жди! =)'
                     else:
                         return False, 'Время уже прошло'
                 else:
