@@ -143,8 +143,10 @@ def check_time(time, date=''):
                             return True, ''                    # Принято
                         elif time_mass[1] == time_mass_now[1]:
                             return False, 'Это прямо сейчас! Давай, действуй, не жди! =)'
+                        else:
+                            return False, 'Время уже прошло.'
                     else:
-                        return False, 'Время уже прошло'
+                        return False, 'Время уже прошло.'
                 else:
                     return False, 'Дата как-то уже прошла, непонятно... совсем...'
 

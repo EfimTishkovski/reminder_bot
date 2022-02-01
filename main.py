@@ -40,7 +40,7 @@ user_events_glob = []
 # Фоновая функция отслеживания событий
 async def reminer_func():
     now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
-    now_date = datetime.datetime.now().strftime('%Y-%d-%m')  # Текущая дата
+    now_date = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
     now_time_mass = list(map(int, now_time.split('-')))
     second = (60 - int(now_time_mass[2])) + 1
     # Стабильный запуск, base и cursor успеют определиться
@@ -54,7 +54,7 @@ async def reminer_func():
     while True:
         print('Фоновая функция работает')
         now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
-        print(now_time[:-3])
+        print(now_date, now_time[:-3])
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
@@ -64,10 +64,11 @@ async def reminer_func():
         for line in event_mass:
             if line[3] != 'done':
                 print(line)
-                await rem_bot.send_message(line[0], line[2])    # Отсылка сообщения пользователю
+                await rem_bot.send_message('Отослано: ', line[0], line[2])    # Отсылка сообщения пользователю
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 base_query(base=base, cursor=cursor, query=query)
+                # Дописать запись в журнал
 
         event_mass.clear()
         await asyncio.sleep(50)  # Задержка опроса базы
@@ -148,9 +149,9 @@ async def event_time(message: types.Message, state: FSMContext):
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
             # Запись события в базу
-            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time],[event]) " \
+            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time],[event],[status]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}');"
+                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Дописать отметку в журнале
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
