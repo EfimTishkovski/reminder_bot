@@ -1,3 +1,4 @@
+import asyncio
 from aiogram import Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext             # импорт библиотеки с машиной состояний
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -6,7 +7,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
-from message_func import *
+
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -58,7 +59,7 @@ async def reminer_func():
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
         # Получение событий из базы
-        event_mass = back.base_query(base=base, cursor=cursor, query=query, mode='search')
+        event_mass = base_query(base=base, cursor=cursor, query=query, mode='search')
         # Отсылка событий по одному
         for line in event_mass:
             if line[3] != 'done':
@@ -66,7 +67,7 @@ async def reminer_func():
                 await rem_bot.send_message(line[0], line[2])    # Отсылка сообщения пользователю
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
-                back.base_query(base=base, cursor=cursor, query=query)
+                base_query(base=base, cursor=cursor, query=query)
 
         event_mass.clear()
         await asyncio.sleep(50)  # Задержка опроса базы
@@ -195,7 +196,7 @@ async def edit_events_command(message:types.Message, state:FSMContext):
         user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
     else:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
-        print('Ошибка с БД')
+        print('Ошибка с БД при редактировании события')
 
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
@@ -307,7 +308,6 @@ async def edit_time(message:types.Message, state:FSMContext):
                         f"VALUES ({data['id']}, '{user_name[0][0]}'," \
                         f"'{data['Старое имя события']} {'>'} {data['Новое имя события']}', 'edit', '{time_now}')"
             base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
-
         else:
             await message.reply(new_time[1])
             await rem_bot.send_message(message.chat.id, 'Введите время снова.')
@@ -321,7 +321,6 @@ async def edit_time(message:types.Message, state:FSMContext):
         await state.finish()
     else:
         print('Ошибка при замене события')
-        #await state.finish()
 
 ######################################## РЕДАКТИРОВАНИЕ ###############################################################
 
@@ -393,7 +392,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     base_query(base=base, cursor=cursor, query=delete_log_query)
 
     if base_query(base=base, cursor=cursor, query=delete_query):
-        print(f"Событие {data['Событие']} удалено id: {data['id']}")
+        print(f"Событие {data['Событие']} удалено пользователь: {user_name[0][0]}")
         await callback.message.answer(f"Удалено событие: {data['Событие']}")
     else:
         await callback.message.answer('Ооп! Ошибочка! Удаление не сработало.')
@@ -450,7 +449,9 @@ async def help(message:types.Message):
                                'Кнопка "Добавить событие" - добавить новое событие\n' +
                                'Кнопка "Показать мои события" - показывает все активные события пользователя запустившего бот\n' +
                                'Кнопка "Редактировать события" - открывает менюшку редактирования событий\n' +
-                               'Кнопка "Удалить событие" - удаляет событие')
+                               'Кнопка "Удалить событие" - удаляет событие\n' +
+                               'Для отмены нажать кнопку отмена, если такой нет, '
+                               'то написать в сообщении отмена')
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
