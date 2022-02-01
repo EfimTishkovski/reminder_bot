@@ -299,11 +299,18 @@ async def edit_time(message:types.Message, state:FSMContext):
                             f"[event] = '{data['Новое имя события']}'" \
                             f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
             flag = base_query(base=base, cursor=cursor, query=replace_query)
-            # Перенести сюда вызов функции записи в базу
+            # Запись в журнал
+            time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+            name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
+            user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+            log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                        f"VALUES ({data['id']}, '{user_name[0][0]}'," \
+                        f"'{data['Старое имя события']} {'>'} {data['Новое имя события']}', 'edit', '{time_now}')"
+            base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
+
         else:
             await message.reply(new_time[1])
             await rem_bot.send_message(message.chat.id, 'Введите время снова.')
-
 
     if flag:
         await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
@@ -377,6 +384,14 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
         data = data.as_dict()
     delete_query = f"DELETE FROM 'event_from_users' WHERE [event] = '{data['Событие']}' " \
                    f"AND [id] = '{data['id']}' "
+    # Запись в журнале
+    time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+    name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
+    user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+    delete_log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                       f"VALUES ({data['id']},'{user_name[0][0]}','{data['Событие']}','delete', '{time_now}')"
+    base_query(base=base, cursor=cursor, query=delete_log_query)
+
     if base_query(base=base, cursor=cursor, query=delete_query):
         print(f"Событие {data['Событие']} удалено id: {data['id']}")
         await callback.message.answer(f"Удалено событие: {data['Событие']}")
