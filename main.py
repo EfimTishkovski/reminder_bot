@@ -35,6 +35,11 @@ async def stop_func(_):
 
 # Глобальные переменные
 user_events_glob = []
+
+# Функция нулевого вопроса
+def zero_digit(gidit):
+    out = f"0{gidit}"
+    return out
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
@@ -127,7 +132,13 @@ async def event_date(message: types.Message, state: FSMContext):
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
         if date_input[0]:
-            data['Дата'] = message.text        # Получение данных от пользователя в словарь
+            # Решение с форматом даты 2022-02-05 2022-2-5
+            date_mass = message.text.split('-')
+            if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
+                date_mass[1] = f"0{date_mass[1]}"
+            if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
+                date_mass[2] = f"0{date_mass[2]}"
+            data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"        # Получение данных от пользователя в словарь
             await FSM_event_user.next()        # Переход к следующему состоянию машины
             await FSM_event_user.time.set()    # Установка к следующего состоянию машины
             await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
@@ -288,8 +299,14 @@ async def edit_name(message : types.Message, state : FSMContext):
 async def edit_date(message:types.Message, state:FSMContext):
     new_date = check_date(message.text)  # Проверка корректности даты
     if new_date[0]:
-        async with state.proxy() as data:
-            data['Новая дата события'] = message.text
+        # Решение с форматом даты 2022-02-05 2022-2-5
+        date_mass = message.text.split('-')
+        if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
+            date_mass[1] = f"0{date_mass[1]}"
+        if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
+            date_mass[2] = f"0{date_mass[2]}"
+            async with state.proxy() as data:
+                data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
         await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
         await FSM_edit_event.next()
         await FSM_edit_event.event_new_time.set()
