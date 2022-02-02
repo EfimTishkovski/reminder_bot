@@ -362,15 +362,19 @@ async def show_event(message:types.Message, state:FSMContext):
 
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
-    button_mass = []
-    for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
+    if data_from_query:
+        button_mass = []
+        for line in user_events_glob:
+            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
 
-    # Создание клавиатуры
-    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(*button_mass)                    # добавление массива кнопок в объект клавиатуры
-    inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
-    await message.answer('События в кнопках', reply_markup=inline_key)
+        # Создание клавиатуры
+        inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
+        inline_key.add(*button_mass)                    # добавление массива кнопок в объект клавиатуры
+        inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
+        await message.answer('События в кнопках', reply_markup=inline_key)
+    else:
+        await message.answer('Записей нет')
+        await state.finish()
 
 # Подтверждение удаления
 @disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_delete_event.event_keyboard)
