@@ -27,6 +27,7 @@ async def start_func(_):
     base, cursor = start_base()          # Подключение к БД
 
 # Функция завершения работы бота, сообщение, запуск в полинге
+# Стабильно работает на Windows 10, на Windows 7 не отрабатывает.
 async def stop_func(_):
     print('Бот остановлен')
     global base, cursor
@@ -52,9 +53,7 @@ async def reminer_func():
         break
     print('Запуск фоновой функции')
     while True:
-        print('Фоновая функция работает')
         now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
-        print(now_date, now_time[:-3])
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
@@ -63,12 +62,18 @@ async def reminer_func():
         # Отсылка событий по одному
         for line in event_mass:
             if line[3] != 'done':
-                print(line)
-                await rem_bot.send_message('Отослано: ', line[0], line[2])    # Отсылка сообщения пользователю
+                print('Напоминание отправлено', line)
+                await rem_bot.send_message(line[0], f'Напоминание: {line[2]}')    # Отсылка сообщения пользователю
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 base_query(base=base, cursor=cursor, query=query)
-                # Дописать запись в журнал
+                # Запись в журнал
+                time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+                name_query = f"SELECT first_name FROM 'users' WHERE [id] = {line[0]}"
+                user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+                log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                        f"VALUES ({line[0]}, '{user_name[0][0]}','{line[2]}', 'done', '{time_now}')"
+                base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
 
         event_mass.clear()
         await asyncio.sleep(50)  # Задержка опроса базы
@@ -140,7 +145,13 @@ async def event_time(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         time_input = check_time(message.text, str(data['Дата']))  # Проверка времени на корректность
         if time_input[0]:
-            data['Время'] = message.text
+            # Добавление 0, формат 09-23 вместо 9-23
+            time_mass = message.text.split('-')
+            if int(time_mass[0]) < 10:
+                time_mass[0] = f'0{time_mass[0]}'
+                data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
+            else:
+                data['Время'] = message.text
 
             data_event = data.as_dict()   # Данные в памяти в виде словаря
             await rem_bot.send_message(message.chat.id, 'Событие: \n' +
@@ -153,7 +164,7 @@ async def event_time(message: types.Message, state: FSMContext):
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
-            # Дописать отметку в журнале
+            # Запись в журнал
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
             log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
                         f"VALUES ({user_info['id']}, '{user_info['Имя']}','{data_event['Название']}', 'create', '{time_now}')"
@@ -452,7 +463,7 @@ async def help(message:types.Message):
                                'Кнопка "Редактировать события" - открывает менюшку редактирования событий\n' +
                                'Кнопка "Удалить событие" - удаляет событие\n' +
                                'Для отмены нажать кнопку отмена, если такой нет, '
-                               'то написать в сообщении отмена')
+                               'то написать в сообщении: отмена')
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
