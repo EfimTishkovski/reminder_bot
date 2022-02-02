@@ -307,6 +307,9 @@ async def edit_date(message:types.Message, state:FSMContext):
             date_mass[2] = f"0{date_mass[2]}"
             async with state.proxy() as data:
                 data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
+        else:
+            async with state.proxy() as data:
+                data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
         await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
         await FSM_edit_event.next()
         await FSM_edit_event.event_new_time.set()
@@ -323,10 +326,12 @@ async def edit_time(message:types.Message, state:FSMContext):
         new_time = check_time(message.text, data['Новая дата события'])
         if new_time[0]:
             data['Новое время'] = message.text
+            # Дописать проверку времени как при создании.
             data = data.as_dict()
             replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Новая дата события']}'," \
                             f"[time] = '{data['Новое время']}'," \
-                            f"[event] = '{data['Новое имя события']}'" \
+                            f"[event] = '{data['Новое имя события']}'," \
+                            f"[status] = '{'wait'}'" \
                             f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
             flag = base_query(base=base, cursor=cursor, query=replace_query)
             # Запись в журнал
