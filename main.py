@@ -77,7 +77,7 @@ async def reminer_func():
                 base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
 
         event_mass.clear()
-        await asyncio.sleep(50)  # Задержка опроса базы
+        await asyncio.sleep(30)  # Задержка опроса базы
 
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 
