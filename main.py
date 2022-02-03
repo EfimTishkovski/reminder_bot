@@ -36,10 +36,6 @@ async def stop_func(_):
 # Глобальные переменные
 user_events_glob = []
 
-# Функция нулевого вопроса
-def zero_digit(gidit):
-    out = f"0{gidit}"
-    return out
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
@@ -158,12 +154,11 @@ async def event_time(message: types.Message, state: FSMContext):
         if time_input[0]:
             # Добавление 0, формат 09-23 вместо 9-23
             time_mass = message.text.split('-')
-            if int(time_mass[0]) < 10:
+            if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
                 time_mass[0] = f'0{time_mass[0]}'
                 data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
             else:
                 data['Время'] = message.text
-
             data_event = data.as_dict()   # Данные в памяти в виде словаря
             await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
@@ -325,8 +320,14 @@ async def edit_time(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         new_time = check_time(message.text, data['Новая дата события'])
         if new_time[0]:
-            data['Новое время'] = message.text
-            # Дописать проверку времени как при создании.
+            # Добавление 0, формат 09-23 вместо 9-23
+            time_mass = message.text.split('-')
+            if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
+                time_mass[0] = f'0{time_mass[0]}'
+                data['Новое время'] = f"{time_mass[0]}-{time_mass[1]}"
+            else:
+                data['Новое время'] = message.text
+
             data = data.as_dict()
             replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Новая дата события']}'," \
                             f"[time] = '{data['Новое время']}'," \
@@ -338,10 +339,15 @@ async def edit_time(message:types.Message, state:FSMContext):
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
             name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
             user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+            if data['Старое имя события'].lower() != data['Новое имя события'].lower():
+                change_name = '>' + data['Новое имя события'] # меняем имя
+            else:
+                change_name = ''                              # Имя неизменно
             log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
-                        f"VALUES ({data['id']}, '{user_name[0][0]}'," \
-                        f"'{data['Старое имя события']} {'>'} {data['Новое имя события']}', 'edit', '{time_now}')"
+                            f"VALUES ({data['id']}, '{user_name[0][0]}'," \
+                            f"'{data['Старое имя события']} {change_name}', 'edit', '{time_now}')"
             base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
+
         else:
             await message.reply(new_time[1])
             await rem_bot.send_message(message.chat.id, 'Введите время снова.')
