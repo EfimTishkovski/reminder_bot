@@ -87,6 +87,7 @@ async def reminer_func():
 # Создаём состояния FSM
 class FSM_event_user(StatesGroup):
     name = State()
+    remember = State()
     date = State()
     time = State()
 
@@ -94,7 +95,13 @@ class FSM_event_user(StatesGroup):
 @disp.message_handler(lambda message: message.text == 'Добавить событие', state=None)
 async def event_start(message: types.Message):
     await FSM_event_user.name.set()
-    await rem_bot.send_message(message.chat.id, 'Введите название')
+    # Образец для пользователя
+    await rem_bot.send_message(message.chat.id, 'Название: Короткое название или номер.\n' +
+                                                'Напоминание: Длинный или не очень важный текст =)\n' +
+                                                'Дата: Дата когда об этом нужно напомгить.\n' +
+                                                'Время: В какое время напомнить.')
+    # Первый запрос
+    await rem_bot.send_message(message.chat.id, 'Введите название напоминания')
 
 # Выход из состояний (отмена для диалога ввода даты)
 # "*" - любое состояние МС
@@ -111,15 +118,24 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
-    id = message.from_user.id                           # id пользователя
-    if repeat_name(message.text.lower(), id, base=base, cursor=cursor):
+    id_us = message.from_user.id                           # id пользователя
+    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor):
         async with state.proxy() as data:               # Узнать что это (вроде запись данных)
             data['Название'] = message.text.lower()     # получение данных от пользователя в словарь
         await FSM_event_user.next()                     # Переход к следующему состоянию машины
-        await FSM_event_user.date.set()                 # Установка к следующего состоянию машины
-        await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
+        await FSM_event_user.remember.set()             # Установка к следующего состоянию машины
+        await rem_bot.send_message(message.chat.id, 'Введите текст напоминиания')  # Сообщению пользователю что делать дальше
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
+
+# Ловим текст напомининия
+@disp.message_handler(state=FSM_event_user.remember)
+async def event_name(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:               # Узнать что это (вроде запись данных)
+        data['Напомининие'] = message.text.lower()  # получение данных от пользователя в словарь
+    await FSM_event_user.next()                     # Переход к следующему состоянию машины
+    await FSM_event_user.date.set()             # Установка к следующего состоянию машины
+    await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
 
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
@@ -163,12 +179,14 @@ async def event_time(message: types.Message, state: FSMContext):
             await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
+                               f"Напоминание: {data_event['Напомининие']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
             # Запись события в базу
-            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time],[event],[status]) " \
+            write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time]," \
+                                        f"[event],[status],[remember]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait');"
+                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait','{data_event['Напомининие']}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
