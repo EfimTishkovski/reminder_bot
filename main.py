@@ -121,14 +121,12 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
     id_us = message.from_user.id                        # id пользователя
-    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor) and len(message.text) <= lengt_name:
+    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor):
         async with state.proxy() as data:               # Узнать что это (вроде запись данных)
             data['Название'] = message.text.lower()     # получение данных от пользователя в словарь
         await FSM_event_user.next()                     # Переход к следующему состоянию машины
         await FSM_event_user.date.set()             # Установка к следующего состоянию машины
         await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
-    elif len(message.text) > lengt_name:
-        await message.reply('Название слишком длинное, доустимо 31 символ.\n Попробуйте снова.')
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
 
