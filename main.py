@@ -98,8 +98,7 @@ async def event_start(message: types.Message):
     await FSM_event_user.name.set()
     # Образец для пользователя
     await rem_bot.send_message(message.chat.id, 'ПРИМЕР')
-    await rem_bot.send_message(message.chat.id, 'Название: Короткое название или номер.\n' +
-                                                'Напоминание: Длинный или не очень важный текст =)\n' +
+    await rem_bot.send_message(message.chat.id, 'Напоминание: Что-то очень важное что никак недбзя забыть.\n' +
                                                 'Дата: Дата когда об этом нужно напомгить.\n' +
                                                 'Время: В какое время напомнить.')
     # Первый запрос
@@ -173,14 +172,13 @@ async def event_time(message: types.Message, state: FSMContext):
             await rem_bot.send_message(message.chat.id, 'Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
-                               f"Напоминание: {data_event['Напомининие']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
             # Запись события в базу
             write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time]," \
-                                        f"[event],[status],[remember]) " \
+                                        f"[event],[status]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait','{data_event['Напомининие']}');"
+                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
@@ -461,7 +459,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
 async def welcome(message:types.Message):
-    await rem_bot.send_message(message.chat.id, 'Привет! Это бот - напоминалка\n' +
+    await rem_bot.send_message(message.chat.id, '\xE2\x9D\xA4 Привет! Это бот - напоминалка\n' +
                                             'Для взаимодействия используйте кнопки снизу\n' +
                                             'Вызов помощи "/help"')
 
