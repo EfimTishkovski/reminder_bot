@@ -36,6 +36,7 @@ async def stop_func(_):
 
 # Глобальные переменные
 user_events_glob = []
+lengt_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
@@ -88,7 +89,6 @@ async def reminer_func():
 # Создаём состояния FSM
 class FSM_event_user(StatesGroup):
     name = State()
-    remember = State()
     date = State()
     time = State()
 
@@ -121,25 +121,17 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
     id_us = message.from_user.id                        # id пользователя
-    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor) and len(message.text) <= 31:
+    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor) and len(message.text) <= lengt_name:
         async with state.proxy() as data:               # Узнать что это (вроде запись данных)
             data['Название'] = message.text.lower()     # получение данных от пользователя в словарь
         await FSM_event_user.next()                     # Переход к следующему состоянию машины
-        await FSM_event_user.remember.set()             # Установка к следующего состоянию машины
-        await rem_bot.send_message(message.chat.id, 'Введите текст напоминиания')  # Сообщению пользователю что делать дальше
-    elif len(message.text) > 31:
+        await FSM_event_user.date.set()             # Установка к следующего состоянию машины
+        await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
+    elif len(message.text) > lengt_name:
         await message.reply('Название слишком длинное, доустимо 31 символ.\n Попробуйте снова.')
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
 
-# Ловим текст напомининия
-@disp.message_handler(state=FSM_event_user.remember)
-async def event_name(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:               # Узнать что это (вроде запись данных)
-        data['Напомининие'] = message.text.lower()  # получение данных от пользователя в словарь
-    await FSM_event_user.next()                     # Переход к следующему состоянию машины
-    await FSM_event_user.date.set()             # Установка к следующего состоянию машины
-    await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД')  # Сообщению пользователю что делать дальше
 
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
@@ -243,12 +235,11 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     # Массив кнопок с названиями событий
     button_mass = []
     for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
+        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:lengt_name + 1]}'))
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(button_mass[0], button_mass[1], button_mass[2], button_mass[3], button_mass[4])  # добавление массива кнопок в объект клавиатуры
-    #inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
+    inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
     await message.answer('События в кнопках', reply_markup=inline_key)
 
@@ -265,9 +256,9 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 # Обработчик события(обновления) имя записанное в callback_data
-@disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_edit_event.event_keyboard)
+@disp.callback_query_handler(Text(startswith='ueb'), state=FSM_edit_event.event_keyboard)
 async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
-    event = callback.data.replace('users_events_button', '').lower()  # Вытягиваем название события
+    event = callback.data.replace('ueb', '').lower()  # Вытягиваем название события
     async with state.proxy() as data:
         data['Старое имя события'] = event
     await FSM_edit_event.next()
@@ -417,7 +408,7 @@ async def show_event(message:types.Message, state:FSMContext):
     if data_from_query:
         button_mass = []
         for line in user_events_glob:
-            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'users_events_button{line[5]}'))
+            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5]}'))
 
         # Создание клавиатуры
         inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -429,11 +420,11 @@ async def show_event(message:types.Message, state:FSMContext):
         await state.finish()
 
 # Подтверждение удаления
-@disp.callback_query_handler(Text(startswith='users_events_button'), state=FSM_delete_event.event_keyboard)
+@disp.callback_query_handler(Text(startswith='ueb'), state=FSM_delete_event.event_keyboard)
 async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
     await FSM_delete_event.event_delete.set()
-    event = callback.data.replace('users_events_button', '')                # Вытягиваем название события
+    event = callback.data.replace('ueb', '')                # Вытягиваем название события
     async with state.proxy() as data:
         data['Событие'] = event
     query = f"SELECT [date],[time] FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
