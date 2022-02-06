@@ -8,6 +8,7 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 
+# Ограничить название напоминания 31 символов
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -96,6 +97,7 @@ class FSM_event_user(StatesGroup):
 async def event_start(message: types.Message):
     await FSM_event_user.name.set()
     # Образец для пользователя
+    await rem_bot.send_message(message.chat.id, 'ПРИМЕР')
     await rem_bot.send_message(message.chat.id, 'Название: Короткое название или номер.\n' +
                                                 'Напоминание: Длинный или не очень важный текст =)\n' +
                                                 'Дата: Дата когда об этом нужно напомгить.\n' +
@@ -118,13 +120,15 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
-    id_us = message.from_user.id                           # id пользователя
-    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor):
+    id_us = message.from_user.id                        # id пользователя
+    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor) and len(message.text) <= 31:
         async with state.proxy() as data:               # Узнать что это (вроде запись данных)
             data['Название'] = message.text.lower()     # получение данных от пользователя в словарь
         await FSM_event_user.next()                     # Переход к следующему состоянию машины
         await FSM_event_user.remember.set()             # Установка к следующего состоянию машины
         await rem_bot.send_message(message.chat.id, 'Введите текст напоминиания')  # Сообщению пользователю что делать дальше
+    elif len(message.text) > 31:
+        await message.reply('Название слишком длинное, доустимо 31 символ.\n Попробуйте снова.')
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
 
@@ -225,6 +229,7 @@ async def edit_events_command(message:types.Message, state:FSMContext):
         data['id'] = user
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
     global user_events_glob
+    print(user_events_glob)
     user_events_glob.clear()                                   # Очистка глобального массива событий
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
     # Проверка на ошибку БД
@@ -233,7 +238,7 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     else:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД при редактировании события')
-
+    print(user_events_glob)
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
     button_mass = []
@@ -242,7 +247,8 @@ async def edit_events_command(message:types.Message, state:FSMContext):
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
+    inline_key.add(button_mass[0], button_mass[1], button_mass[2], button_mass[3], button_mass[4])  # добавление массива кнопок в объект клавиатуры
+    #inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
     await message.answer('События в кнопках', reply_markup=inline_key)
 
