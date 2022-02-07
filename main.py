@@ -7,6 +7,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
+from emoji import *
 
 # Ограничить название напоминания 31 символов
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
@@ -36,7 +37,7 @@ async def stop_func(_):
 
 # Глобальные переменные
 user_events_glob = []
-lengt_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
+length_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
@@ -169,7 +170,7 @@ async def event_time(message: types.Message, state: FSMContext):
             else:
                 data['Время'] = message.text
             data_event = data.as_dict()   # Данные в памяти в виде словаря
-            await rem_bot.send_message(message.chat.id, 'Событие: \n' +
+            await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
@@ -231,7 +232,7 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     # Массив кнопок с названиями событий
     button_mass = []
     for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:lengt_name + 1]}'))
+        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:length_name + 1]}'))
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -404,7 +405,7 @@ async def show_event(message:types.Message, state:FSMContext):
     if data_from_query:
         button_mass = []
         for line in user_events_glob:
-            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5]}'))
+            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:length_name + 1]}'))
 
         # Создание клавиатуры
         inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -459,7 +460,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
 async def welcome(message:types.Message):
-    await rem_bot.send_message(message.chat.id, '\xE2\x9D\xA4 Привет! Это бот - напоминалка\n' +
+    await rem_bot.send_message(message.chat.id, f'{green_box} Привет! Это бот - напоминалка\n' +
                                             'Для взаимодействия используйте кнопки снизу\n' +
                                             'Вызов помощи "/help"')
 
