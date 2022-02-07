@@ -404,8 +404,13 @@ async def show_event(message:types.Message, state:FSMContext):
     # Массив кнопок с названиями событий
     if data_from_query:
         button_mass = []
-        for line in user_events_glob:
-            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:length_name + 1]}'))
+        id_button = 0
+        async with state.proxy() as data:
+            for line in user_events_glob:
+                id_button += 1
+                button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{str(id_button)}'))
+                data[id_button] = line[5]
+        print(data.as_dict())
 
         # Создание клавиатуры
         inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -421,9 +426,11 @@ async def show_event(message:types.Message, state:FSMContext):
 async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
     await FSM_delete_event.event_delete.set()
-    event = callback.data.replace('ueb', '')                # Вытягиваем название события
+    local_id_event = callback.data.replace('ueb', '')                # Вытягиваем локальный id события
     async with state.proxy() as data:
+        event = data[int(local_id_event)]
         data['Событие'] = event
+    print(event)
     query = f"SELECT [date],[time] FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
     date = base_query(base=base, cursor=cursor, query=query, mode='search') # Получаем время события
     inline_key = InlineKeyboardMarkup(row_width=2)
@@ -449,7 +456,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
 
     if base_query(base=base, cursor=cursor, query=delete_query):
         print(f"Событие {data['Событие']} удалено пользователь: {user_name[0][0]}")
-        await callback.message.answer(f"Удалено событие: {data['Событие']}")
+        await callback.message.answer(f"{cross_mark}Удалено событие: {data['Событие']}")
     else:
         await callback.message.answer('Ооп! Ошибочка! Удаление не сработало.')
         print('ошибка удаления из базы')
