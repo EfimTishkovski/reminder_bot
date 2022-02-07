@@ -1,6 +1,8 @@
 import sqlite3
 import re
 import datetime
+import random
+from string import ascii_lowercase
 
 
 # Функция соединения с БД возвращает объект типа sqlite3 (база и курсор)
@@ -159,3 +161,8 @@ def repeat_name(name_event, id, base, cursor):
         return False  # Имя уже занято
     else:
         return True   # Имя свободно совпадений нет
+
+# Функция генерации id события
+def generate_id():
+    out = '@' + str(random.randint(1001, 9999)) + random.choice(ascii_lowercase) + '@' + str(random.randint(0, 999))
+    return out

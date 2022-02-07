@@ -170,16 +170,19 @@ async def event_time(message: types.Message, state: FSMContext):
             else:
                 data['Время'] = message.text
             data_event = data.as_dict()   # Данные в памяти в виде словаря
+            # послание юзеру, что всё норм
             await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
                                f"Дата: {data_event['Дата']} \n" +
                                f"Время: {data_event['Время']}")
             # Запись события в базу
+            id_event = generate_id()   # Генерация id для события
             write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time]," \
-                                        f"[event],[status]) " \
+                                        f"[event],[status],[id_event]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
-                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait');"
+                                f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait'," \
+                                        f"'{id_event}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
             time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
@@ -392,7 +395,7 @@ async def show_event(message:types.Message, state:FSMContext):
         data['id'] = user
     global user_events_glob
     user_events_glob.clear()                                   # Очистка глобального массива событий
-    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
+    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search') # Поиск событий в базе
     # Проверка на корректную отработку запроса в БД
     if data_from_query is not None:
         user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
@@ -453,7 +456,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     delete_log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
                        f"VALUES ({data['id']},'{user_name[0][0]}','{data['Событие']}','delete', '{time_now}')"
     base_query(base=base, cursor=cursor, query=delete_log_query)
-
+    #----------------------------------------------------------------------------------------------------------
     if base_query(base=base, cursor=cursor, query=delete_query):
         print(f"Событие {data['Событие']} удалено пользователь: {user_name[0][0]}")
         await callback.message.answer(f"{cross_mark}Удалено событие: {data['Событие']}")
