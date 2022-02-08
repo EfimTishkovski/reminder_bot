@@ -214,40 +214,35 @@ class FSM_edit_event(StatesGroup):
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
 async def edit_events_command(message:types.Message, state:FSMContext):
-    await FSM_edit_event.event_keyboard.set()     # Установка нового состояния МС
-    # Работа функции
     user = message.from_user.id  # получаем id пользователя
-    async with state.proxy() as data:  #?
-        data['id'] = user              #?
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    global user_events_glob     #?
-    print(user_events_glob)     #?
-    user_events_glob.clear()    #?                              # Очистка глобального массива событий
-    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
+    data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search') # Получение событий из базы
     # Проверка на ошибку БД
+    button_mass = []
     if data_from_query is not None:
-        user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
+        # Массив кнопок с названиями событий
+        async with state.proxy() as data:
+            for line in data_from_query:
+                id_button = line[7]
+                button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
+                data[id_button] = line[5]
     else:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД при редактировании события')
-    print(user_events_glob)  #?
-    # Инлайновая клавиатура обработки событий.
-    # Массив кнопок с названиями событий
-    button_mass = []
-    async with state.proxy() as data:
-        for line in user_events_glob:
-            id_button = line[7]
-            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
-            data[id_button] = line[5]
 
     # Создание клавиатуры
-    inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
+    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
+    inline_key.add(*button_mass)  # добавление массива кнопок в объект клавиатуры
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
     mtu = await message.answer('События в кнопках', reply_markup=inline_key)  # mtu - message to user
-    # Сохранение id сообщения
+
+    # Сохранение id сообщения и id пользователя, пригодятся дальше
     async with state.proxy() as data:
+        data.clear()
+        data['id'] = user
         data['Первое сообщение'] = mtu.message_id
+    await FSM_edit_event.event_keyboard.set()  # Установка нового состояния МС
+    print(data.as_dict())
 
 # Кнопка отмены редактирования
 @disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
@@ -265,8 +260,6 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 @disp.callback_query_handler(Text(startswith='ueb'), state=FSM_edit_event.event_keyboard)
 async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     id_event = callback.data.replace('ueb', '')      # Вытягиваем id события
-    async with state.proxy() as data:
-        data['Старое имя события'] = data[id_event]
     await FSM_edit_event.next()
     await FSM_edit_event.event_edit.set()
     # Инлайновая клавиатура обработки событий.
@@ -277,14 +270,18 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     # Через запрос в базу
     event_info_query = f"SELECT * FROM 'event_from_users' WHERE [id] = {callback.from_user.id} AND [id_event] = '{id_event}'"
     event_info = base_query(base=base, cursor=cursor, query=event_info_query, mode='search')
-    print(event_info[0])
     # Вывод пользователю
     if event_info is not None:
         info_to_user = await callback.message.answer('Событие: ' + f'{event_info[0][5]}\n' +
                                           'Дата: ' + f'{event_info[0][3]}\n' +
                                           'Время: ' + f'{event_info[0][4]}', reply_markup=inline_key)
-        await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0],message_id=data['Первое сообщение'], reply_markup=None)
-        print('id сообщения', info_to_user.message_id)
+        async with state.proxy() as data:
+            data['Имя события'] = event_info[0][5]
+            data['Дата'] = event_info[0][3]
+            data['Время'] = event_info[0][4]
+            data['Второе сообщение'] = info_to_user.message_id
+        await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0], message_id=data['Первое сообщение'],
+                                                reply_markup=None)  # Удаление инлайн кнопок из предыдущего сообщения
         print(data.as_dict())
     else:
         await callback.message.answer('Что-то пошло не так\n Редактирование отменено')
@@ -297,27 +294,57 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
 # Начало диалога для получения новых данных нового имени события
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
 async def edit_current_event(callback : types.CallbackQuery):
-    await callback.message.answer('Введите новое имя события.')
+    inline_key = InlineKeyboardMarkup()                                   # Создание объекта клавиатуры
+    old_name_button = InlineKeyboardButton(text='Оставить прежнее',
+                                           callback_data='name_no_edit')  # Кнопка
+    inline_key.add(old_name_button)
+    await callback.message.answer('Введите новое имя события.', reply_markup=inline_key)
+
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_name.set()
     await callback.answer()
 
-# Получение нового имени
-@ disp.message_handler(state=FSM_edit_event.event_new_name)
-async def edit_name(message : types.Message, state : FSMContext):
-    async with state.proxy() as data:
-        old_name = data['Старое имя события']
-    # События или нет в базе или пользователь оставляет старое имя
-    if repeat_name(message.text.lower(), message.from_user.id, base=base, cursor=cursor) or old_name == message.text.lower():
-        async with state.proxy() as data:
-            data['Новое имя события'] = message.text.lower()
-        await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД')
-        await FSM_edit_event.next()
-        await FSM_edit_event.event_new_date.set()
-    else:
-        await message.reply('Такое событие уже есть. Придумайте новое имя.')
+# Получение нового имени, сработает если нажата кнопка "Оставить прежнее"
+@disp.callback_query_handler(Text(startswith='name_no_edit'), state=FSM_edit_event.event_new_name)
+async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
+    inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
+    old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
+                                           callback_data='date_no_edit')  # Кнопка
+    inline_key.add(old_name_button)
 
-# Получение новой даты
+    async with state.proxy() as data:
+        data['Новое имя события'] = data['Старое имя события']
+    await callback.message.answer('Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
+    print(data.as_dict())
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_date.set()
+    await callback.answer()
+
+# Получение нового имени, сработает если введено новое имя события
+@disp.message_handler(state=FSM_edit_event.event_new_name)
+async def edit_name(message : types.Message, state : FSMContext):
+    inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
+    old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
+                                           callback_data='date_no_edit')  # Кнопка
+    inline_key.add(old_name_button)
+
+    async with state.proxy() as data:
+        data['Новое имя события'] = message.text.lower()
+
+    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
+    print(data.as_dict())
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_date.set()
+
+# Сработает если нажата кнопка "Оставить прежнюю"
+@disp.callback_query_handler(Text(startswith='date_no_edit'), state=FSM_edit_event.event_new_date)
+async def no_edit_date(callback:types.CallbackQuery):
+    await callback.message.answer('Дата осталась неизменной.')
+    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_time.set()
+    await callback.answer()
+
+# Получение новой даты, если введена новая
 @disp.message_handler(state=FSM_edit_event.event_new_date)
 async def edit_date(message:types.Message, state:FSMContext):
     new_date = check_date(message.text)  # Проверка корректности даты
