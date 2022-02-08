@@ -391,8 +391,6 @@ async def show_event(message:types.Message, state:FSMContext):
     await FSM_delete_event.event_keyboard.set()                      # Установка нового состояния МС
     user = message.from_user.id                                      # Получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    async with state.proxy() as data:
-        data['id'] = user
     global user_events_glob
     user_events_glob.clear()                                   # Очистка глобального массива событий
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search') # Поиск событий в базе
@@ -409,10 +407,9 @@ async def show_event(message:types.Message, state:FSMContext):
         button_mass = []
         async with state.proxy() as data:
             for line in user_events_glob:
-                id_button = line[7]
+                id_button = line[7]          # Получение id события (записи)
                 button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{str(id_button)}'))
-                data[id_button] = line[5]
-        #print(data.as_dict())
+                data[id_button] = line[5]    # Получение названия события
 
         # Создание клавиатуры
         inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -429,12 +426,12 @@ async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
     await FSM_delete_event.event_delete.set()
     id_event = callback.data.replace('ueb', '')                # Вытягиваем локальный id события
+    print(callback.from_user.id)
     async with state.proxy() as data:
         event = data[id_event]
         data['Событие'] = event
         data['Удалить событие с id'] = id_event
-    print(data.as_dict())
-    query = f"SELECT [date],[time] FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {data['id']}"
+    query = f"SELECT [date],[time] FROM 'event_from_users' WHERE [event] = '{event}' AND [id] = {callback.from_user.id}"
     date = base_query(base=base, cursor=cursor, query=query, mode='search') # Получаем время события
     inline_key = InlineKeyboardMarkup(row_width=2)
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'),  # Кнопка отмена (работает один на всех хэндлер)
@@ -448,23 +445,23 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         data = data.as_dict()
     delete_query = f"DELETE FROM 'event_from_users' WHERE [event] = '{data['Событие']}' " \
-                   f"AND [id] = '{data['id']}' AND[id_event] = '{data['Удалить событие с id']}'"
+                   f"AND [id] = '{callback.from_user.id}' AND[id_event] = '{data['Удалить событие с id']}'"
 
     # Само удаление
     if base_query(base=base, cursor=cursor, query=delete_query):
         # Запись в журнале
         time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
-        name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
-        user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+        first_name = callback.from_user.first_name                     # Получение имени пользователя
+        user_id = callback.from_user.id                                # Получение id пользователя
         delete_log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
-                           f"VALUES ({data['id']},'{user_name[0][0]}','{data['Событие']}','delete', '{time_now}')"
-        base_query(base=base, cursor=cursor, query=delete_log_query)
-        print(f"Событие {data['Событие']} удалено, пользователь: {user_name[0][0]}")
+                           f"VALUES ({user_id},'{first_name}','{data['Событие']}','delete', '{time_now}')"
+        base_query(base=base, cursor=cursor, query=delete_log_query)   # Выполнение записи в журнал
+        print(f"Событие: {data['Событие']} удалено, пользователь: {first_name}")
         await callback.message.answer(f"{cross_mark}Удалено событие: {data['Событие']}")
     else:
         await callback.message.answer('Ооп! Ошибочка! Удаление не сработало.')
         print('Ошибка удаления из базы')
-    data.clear()               # Очистистка словаря сданными после отработки удаления
+    data.clear()               # Очистка словаря сданными после отработки удаления
     await callback.answer()
     await state.finish()
 
