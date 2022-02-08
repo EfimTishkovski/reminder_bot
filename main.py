@@ -293,13 +293,19 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
 
 # Начало диалога для получения новых данных нового имени события
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
-async def edit_current_event(callback : types.CallbackQuery):
+async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
+    async with state.proxy() as data:
+        # Удаление инлайн кнопок из предыдущего сообщения
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Второе сообщение'],
+                                                reply_markup=None)
     inline_key = InlineKeyboardMarkup()                                   # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнее',
                                            callback_data='name_no_edit')  # Кнопка
     inline_key.add(old_name_button)
-    await callback.message.answer('Введите новое имя события.', reply_markup=inline_key)
-
+    mtu = await callback.message.answer('Введите новое имя события.', reply_markup=inline_key)
+    # Получение id сообщения
+    async with state.proxy() as data:
+        data['Третье сообщение'] = mtu.message_id
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_name.set()
     await callback.answer()
@@ -307,14 +313,19 @@ async def edit_current_event(callback : types.CallbackQuery):
 # Получение нового имени, сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='name_no_edit'), state=FSM_edit_event.event_new_name)
 async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
+    async with state.proxy() as data:
+        # Удаление инлайн кнопок из предыдущего сообщения
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
+                                                reply_markup=None)
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
                                            callback_data='date_no_edit')  # Кнопка
     inline_key.add(old_name_button)
-
+    await callback.message.answer(f'{eight_spoked_asterisk}Сохранено прежнее имя события')
+    mtu = await callback.message.answer('Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
     async with state.proxy() as data:
-        data['Новое имя события'] = data['Старое имя события']
-    await callback.message.answer('Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
+        data['Новое имя события'] = data['Имя события']
+        data['Четвёртое сообщение'] = mtu.message_id
     print(data.as_dict())
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
@@ -323,15 +334,19 @@ async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
 # Получение нового имени, сработает если введено новое имя события
 @disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
+    async with state.proxy() as data:
+        # Удаление инлайн кнопок из предыдущего сообщения
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
+                                                reply_markup=None)
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
                                            callback_data='date_no_edit')  # Кнопка
     inline_key.add(old_name_button)
-
+    mtu = await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД',
+                                     reply_markup=inline_key)
     async with state.proxy() as data:
         data['Новое имя события'] = message.text.lower()
-
-    await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
+        data['Четвёртое сообщение'] = mtu.message_id
     print(data.as_dict())
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
