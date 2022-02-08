@@ -244,7 +244,10 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
     inline_key.add(*button_mass)                   # добавление массива кнопок в объект клавиатуры
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
-    await message.answer('События в кнопках', reply_markup=inline_key)
+    mtu = await message.answer('События в кнопках', reply_markup=inline_key)  # mtu - message to user
+    # Сохранение id сообщения
+    async with state.proxy() as data:
+        data['Первое сообщение'] = mtu.message_id
 
 # Кнопка отмены редактирования
 @disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
@@ -264,7 +267,6 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     id_event = callback.data.replace('ueb', '')      # Вытягиваем id события
     async with state.proxy() as data:
         data['Старое имя события'] = data[id_event]
-    print(data['Старое имя события'])
     await FSM_edit_event.next()
     await FSM_edit_event.event_edit.set()
     # Инлайновая клавиатура обработки событий.
@@ -278,9 +280,12 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     print(event_info[0])
     # Вывод пользователю
     if event_info is not None:
-        await callback.message.answer('Событие: ' + f'{event_info[0][5]}\n' +
+        info_to_user = await callback.message.answer('Событие: ' + f'{event_info[0][5]}\n' +
                                           'Дата: ' + f'{event_info[0][3]}\n' +
                                           'Время: ' + f'{event_info[0][4]}', reply_markup=inline_key)
+        await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0],message_id=data['Первое сообщение'], reply_markup=None)
+        print('id сообщения', info_to_user.message_id)
+        print(data.as_dict())
     else:
         await callback.message.answer('Что-то пошло не так\n Редактирование отменено')
         await callback.answer()
