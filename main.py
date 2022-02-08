@@ -216,13 +216,13 @@ class FSM_edit_event(StatesGroup):
 async def edit_events_command(message:types.Message, state:FSMContext):
     await FSM_edit_event.event_keyboard.set()     # Установка нового состояния МС
     # Работа функции
-    user = message.from_user.id  # получаем имя пользователя
-    async with state.proxy() as data:
-        data['id'] = user
+    user = message.from_user.id  # получаем id пользователя
+    async with state.proxy() as data:  #?
+        data['id'] = user              #?
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    global user_events_glob
-    print(user_events_glob)
-    user_events_glob.clear()                                   # Очистка глобального массива событий
+    global user_events_glob     #?
+    print(user_events_glob)     #?
+    user_events_glob.clear()    #?                              # Очистка глобального массива событий
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search')
     # Проверка на ошибку БД
     if data_from_query is not None:
@@ -230,12 +230,15 @@ async def edit_events_command(message:types.Message, state:FSMContext):
     else:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД при редактировании события')
-    print(user_events_glob)
+    print(user_events_glob)  #?
     # Инлайновая клавиатура обработки событий.
     # Массив кнопок с названиями событий
     button_mass = []
-    for line in user_events_glob:
-        button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{line[5][0:length_name + 1]}'))
+    async with state.proxy() as data:
+        for line in user_events_glob:
+            id_button = line[7]
+            button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
+            data[id_button] = line[5]
 
     # Создание клавиатуры
     inline_key = InlineKeyboardMarkup(row_width=2) # Создание объекта клавиатуры, в ряд 2 кнопки
@@ -258,9 +261,10 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 # Обработчик события(обновления) имя записанное в callback_data
 @disp.callback_query_handler(Text(startswith='ueb'), state=FSM_edit_event.event_keyboard)
 async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
-    event = callback.data.replace('ueb', '').lower()  # Вытягиваем название события
+    id_event = callback.data.replace('ueb', '')      # Вытягиваем id события
     async with state.proxy() as data:
-        data['Старое имя события'] = event
+        data['Старое имя события'] = data[id_event]
+    print(data['Старое имя события'])
     await FSM_edit_event.next()
     await FSM_edit_event.event_edit.set()
     # Инлайновая клавиатура обработки событий.
@@ -268,15 +272,19 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
     cancel_button = InlineKeyboardButton(text='Отмена', callback_data='cancel')  # Кнопка отмена
     inline_key.add(edit_button, cancel_button)
+    # Через запрос в базу
+    event_info_query = f"SELECT * FROM 'event_from_users' WHERE [id] = {callback.from_user.id} AND [id_event] = '{id_event}'"
+    event_info = base_query(base=base, cursor=cursor, query=event_info_query, mode='search')
+    print(event_info[0])
     # Вывод пользователю
-    for line in user_events_glob:
-        if event in line:
-            await callback.message.answer('Событие: ' + f'{line[5]}\n' +
-                                          'Дата: ' + f'{line[3]}\n' +
-                                          'Время: ' + f'{line[4]}', reply_markup=inline_key)
-            break
+    if event_info is not None:
+        await callback.message.answer('Событие: ' + f'{event_info[0][5]}\n' +
+                                          'Дата: ' + f'{event_info[0][3]}\n' +
+                                          'Время: ' + f'{event_info[0][4]}', reply_markup=inline_key)
     else:
-        print('Ошибка при поиске события')   # Отладочная строка этот else может никогда не сработать, подумать и убрать после отладки
+        await callback.message.answer('Что-то пошло не так\n Редактирование отменено')
+        await callback.answer()
+        await state.finish()
 
     await callback.answer()   # Ответ на коллбэк (ответ должен быть обязательно)
                               # Это убирает часики ожидания на кнопке
@@ -448,6 +456,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
                    f"AND [id] = '{callback.from_user.id}' AND[id_event] = '{data['Удалить событие с id']}'"
 
     # Само удаление
+    # Если запрос в базу отработал корректно
     if base_query(base=base, cursor=cursor, query=delete_query):
         # Запись в журнале
         time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
