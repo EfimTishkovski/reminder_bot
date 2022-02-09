@@ -460,25 +460,25 @@ async def write_data(message:types.Message, state:FSMContext):
     flag = False
     async with state.proxy() as data:
         data = data.as_dict()
-        replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
+    replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
                         f"[time] = '{data['Время']}'," \
                         f"[event] = '{data['Новое имя события']}'," \
                         f"[status] = '{'wait'}'" \
                         f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
-        flag = base_query(base=base, cursor=cursor, query=replace_query)
+    flag = base_query(base=base, cursor=cursor, query=replace_query)
 
-        # Запись в журнал
-        time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
-        name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
-        user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
-        if data['Старое имя события'].lower() != data['Новое имя события'].lower():
-            change_name = '>' + data['Новое имя события']  # меняем имя
-        else:
-            change_name = ''  # Имя неизменно
-        log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+    # Запись в журнал
+    time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+    name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
+    user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+    if data['Старое имя события'].lower() != data['Новое имя события'].lower():
+        change_name = '>' + data['Новое имя события']  # меняем имя
+    else:
+        change_name = ''  # Имя неизменно
+    log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
                     f"VALUES ({data['id']}, '{user_name[0][0]}'," \
                     f"'{data['Старое имя события']} {change_name}', 'edit', '{time_now}')"
-        base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
+    base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
 
     if flag:
         await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
