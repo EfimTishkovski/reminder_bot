@@ -419,14 +419,16 @@ async def edit_date(message:types.Message, state:FSMContext):
 # Сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='time_no_edit'), state=FSM_edit_event.event_new_time)
 async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
+    await FSM_edit_event.next()
+    await FSM_edit_event.write_data.set()
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
     await callback.message.answer('Время осталось неизменным')
-    await FSM_edit_event.next()
-    await FSM_edit_event.write_data.set()
     await callback.answer()
+    current_state = await state.get_state()  # Получаем текущее состояние МС
+    print(current_state)
 
 
 # Получение нового времени если оно введено
@@ -439,23 +441,25 @@ async def edit_time(message:types.Message, state:FSMContext):
 
     async with state.proxy() as data:
         new_time = check_time(message.text, data['Дата'])
-        if new_time[0]:
-            # Добавление 0, формат 09-23 вместо 9-23
-            # Тут тоже подумать как вынести в функцию и убрать в back.py
-            time_mass = message.text.split('-')
-            if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
-                time_mass[0] = f'0{time_mass[0]}'
-                data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
-            else:
-                data['Время'] = message.text
-            await FSM_edit_event.next()
-            await FSM_edit_event.write_data.set()
+    if new_time[0]:
+        # Добавление 0, формат 09-23 вместо 9-23
+        # Тут тоже подумать как вынести в функцию и убрать в back.py
+        time_mass = message.text.split('-')
+        if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
+            time_mass[0] = f'0{time_mass[0]}'
+            data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
         else:
-            await message.reply(new_time[1])
-            await rem_bot.send_message(message.chat.id, 'Введите время снова.')
+            data['Время'] = message.text
+        await FSM_edit_event.next()
+        await FSM_edit_event.write_data.set()
+    else:
+        await message.reply(new_time[1])
+        await rem_bot.send_message(message.chat.id, 'Введите время снова.')
 
-@disp.message_handler(state=FSM_edit_event.write_data)
-async def write_data(message:types.Message, state:FSMContext):
+
+@disp.callback_query_handler(state=FSM_edit_event.write_data)
+async def write_data(callback:types.CallbackQuery, state:FSMContext):
+    print('Работает')
     # Запись в базу
     flag = False
     async with state.proxy() as data:
@@ -481,10 +485,10 @@ async def write_data(message:types.Message, state:FSMContext):
     base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
 
     if flag:
-        await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
-                                                    f"Событие: {data['Новое имя события']}\n"
-                                                        f"Дата: {data['Дата']}\n"
-                                                        f"Время: {data['Время']}")
+        await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
+                                        f"Событие: {data['Новое имя события']}\n"
+                                        f"Дата: {data['Дата']}\n"
+                                        f"Время: {data['Время']}")
         print('Замена произведена успешно')
         await state.finish()
     else:
