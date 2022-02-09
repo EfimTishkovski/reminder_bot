@@ -210,6 +210,7 @@ class FSM_edit_event(StatesGroup):
     event_new_name = State()       # Состояние получения нового имени
     event_new_date = State()       # Состояние получения новой даты
     event_new_time = State()       # Cостояние получения нового времени
+    write_data = State()           # Запись данных в базу в конце отработки диалога
 
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
@@ -342,9 +343,9 @@ async def edit_name(message : types.Message, state : FSMContext):
                                                 reply_markup=None)
     # Создание кнопки оставить для даты
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
-    old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
+    old_date_button = InlineKeyboardButton(text='Оставить прежнюю',
                                            callback_data='date_no_edit')  # Кнопка
-    inline_key.add(old_name_button)
+    inline_key.add(old_date_button)
     mtu = await rem_bot.send_message(message.chat.id, 'Введите новую дату в формате: ГГГГ-ММ-ДД',
                                      reply_markup=inline_key)
     async with state.proxy() as data:
@@ -366,9 +367,9 @@ async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
 
     # Создание кнопки оставить для времени
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
-    old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
-                                           callback_data='date_no_edit')  # Кнопка
-    inline_key.add(old_name_button)
+    old_time_button = InlineKeyboardButton(text='Оставить прежнее',
+                                           callback_data='time_no_edit')  # Кнопка
+    inline_key.add(old_time_button)
 
     mtu = await callback.message.answer('Введите новое время в формате: ЧЧ-ММ', reply_markup=inline_key)
     async with state.proxy() as data:
@@ -394,16 +395,16 @@ async def edit_date(message:types.Message, state:FSMContext):
         if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
             date_mass[2] = f"0{date_mass[2]}"
             async with state.proxy() as data:
-                data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
+                data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
         else:
             async with state.proxy() as data:
-                data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
+                data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
 
         # Создание кнопки оставить для времени
         inline_key = InlineKeyboardMarkup()
-        old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
-                                               callback_data='date_no_edit')  # Кнопка
-        inline_key.add(old_name_button)
+        old_time_button = InlineKeyboardButton(text='Оставить прежнее',
+                                               callback_data='time_no_edit')  # Кнопка
+        inline_key.add(old_time_button)
 
         mtu = await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ', reply_markup=inline_key)
         async with state.proxy() as data:
@@ -415,55 +416,80 @@ async def edit_date(message:types.Message, state:FSMContext):
         await message.reply(new_date[1])
         await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
 
-# Получение нового времени
+# Сработает если нажата кнопка "Оставить прежнее"
+@disp.callback_query_handler(Text(startswith='time_no_edit'), state=FSM_edit_event.event_new_time)
+async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
+    async with state.proxy() as data:
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
+                                                reply_markup=None)
+    await callback.message.answer('Время осталось неизменным')
+    await FSM_edit_event.next()
+    await FSM_edit_event.write_data.set()
+    await callback.answer()
+
+
+# Получение нового времени если оно введено
 @disp.message_handler(state=FSM_edit_event.event_new_time)
 async def edit_time(message:types.Message, state:FSMContext):
-    # Дописать проверку
-    flag = False # Флаг чтобы убрать множественную не понятную вложенность
+    # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        new_time = check_time(message.text, data['Новая дата события'])
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
+                                                reply_markup=None)
+
+    async with state.proxy() as data:
+        new_time = check_time(message.text, data['Дата'])
         if new_time[0]:
             # Добавление 0, формат 09-23 вместо 9-23
+            # Тут тоже подумать как вынести в функцию и убрать в back.py
             time_mass = message.text.split('-')
             if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
                 time_mass[0] = f'0{time_mass[0]}'
-                data['Новое время'] = f"{time_mass[0]}-{time_mass[1]}"
+                data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
             else:
-                data['Новое время'] = message.text
-
-            data = data.as_dict()
-            replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Новая дата события']}'," \
-                            f"[time] = '{data['Новое время']}'," \
-                            f"[event] = '{data['Новое имя события']}'," \
-                            f"[status] = '{'wait'}'" \
-                            f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
-            flag = base_query(base=base, cursor=cursor, query=replace_query)
-            # Запись в журнал
-            time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
-            name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
-            user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
-            if data['Старое имя события'].lower() != data['Новое имя события'].lower():
-                change_name = '>' + data['Новое имя события'] # меняем имя
-            else:
-                change_name = ''                              # Имя неизменно
-            log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
-                            f"VALUES ({data['id']}, '{user_name[0][0]}'," \
-                            f"'{data['Старое имя события']} {change_name}', 'edit', '{time_now}')"
-            base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
-
+                data['Время'] = message.text
+            await FSM_edit_event.next()
+            await FSM_edit_event.write_data.set()
         else:
             await message.reply(new_time[1])
             await rem_bot.send_message(message.chat.id, 'Введите время снова.')
 
+@disp.message_handler(state=FSM_edit_event.write_data)
+async def write_data(message:types.Message, state:FSMContext):
+    # Запись в базу
+    flag = False
+    async with state.proxy() as data:
+        data = data.as_dict()
+        replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
+                        f"[time] = '{data['Время']}'," \
+                        f"[event] = '{data['Новое имя события']}'," \
+                        f"[status] = '{'wait'}'" \
+                        f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
+        flag = base_query(base=base, cursor=cursor, query=replace_query)
+
+        # Запись в журнал
+        time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+        name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
+        user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+        if data['Старое имя события'].lower() != data['Новое имя события'].lower():
+            change_name = '>' + data['Новое имя события']  # меняем имя
+        else:
+            change_name = ''  # Имя неизменно
+        log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                    f"VALUES ({data['id']}, '{user_name[0][0]}'," \
+                    f"'{data['Старое имя события']} {change_name}', 'edit', '{time_now}')"
+        base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
+
     if flag:
-        await rem_bot.send_message(message.chat.id, 'Событие успешно изменено')
-        await rem_bot.send_message(message.chat.id, f"Событие: {data['Новое имя события']}\n"
-                                                    f"Дата: {data['Новая дата события']}\n"
-                                                    f"Время: {data['Новое время']}")
+        await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
+                                                    f"Событие: {data['Новое имя события']}\n"
+                                                        f"Дата: {data['Дата']}\n"
+                                                        f"Время: {data['Время']}")
         print('Замена произведена успешно')
         await state.finish()
     else:
         print('Ошибка при замене события')
+        await state.finish()
 
 ######################################## РЕДАКТИРОВАНИЕ ###############################################################
 
