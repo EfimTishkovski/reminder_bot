@@ -294,10 +294,11 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
 # Начало диалога для получения новых данных нового имени события
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_edit_event.event_edit)
 async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        # Удаление инлайн кнопок из предыдущего сообщения
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Второе сообщение'],
                                                 reply_markup=None)
+    # Создание кнопки для нового имени
     inline_key = InlineKeyboardMarkup()                                   # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнее',
                                            callback_data='name_no_edit')  # Кнопка
@@ -313,18 +314,19 @@ async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
 # Получение нового имени, сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='name_no_edit'), state=FSM_edit_event.event_new_name)
 async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        # Удаление инлайн кнопок из предыдущего сообщения
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
                                                 reply_markup=None)
-    inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
+    # Создание кнопки оставить для даты
+    inline_key = InlineKeyboardMarkup()
     old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
                                            callback_data='date_no_edit')  # Кнопка
     inline_key.add(old_name_button)
     await callback.message.answer(f'{eight_spoked_asterisk}Сохранено прежнее имя события')
     mtu = await callback.message.answer('Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
     async with state.proxy() as data:
-        data['Новое имя события'] = data['Имя события']
+        data['Новое имя события'] = data['Имя события']  #?
         data['Четвёртое сообщение'] = mtu.message_id
     print(data.as_dict())
     await FSM_edit_event.next()
@@ -334,10 +336,11 @@ async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
 # Получение нового имени, сработает если введено новое имя события
 @disp.message_handler(state=FSM_edit_event.event_new_name)
 async def edit_name(message : types.Message, state : FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        # Удаление инлайн кнопок из предыдущего сообщения
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
                                                 reply_markup=None)
+    # Создание кнопки оставить для даты
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
                                            callback_data='date_no_edit')  # Кнопка
@@ -353,8 +356,23 @@ async def edit_name(message : types.Message, state : FSMContext):
 
 # Сработает если нажата кнопка "Оставить прежнюю"
 @disp.callback_query_handler(Text(startswith='date_no_edit'), state=FSM_edit_event.event_new_date)
-async def no_edit_date(callback:types.CallbackQuery):
+async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
+    async with state.proxy() as data:
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
+                                                reply_markup=None)
+
     await callback.message.answer('Дата осталась неизменной.')
+
+    # Создание кнопки оставить для времени
+    inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
+    old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
+                                           callback_data='date_no_edit')  # Кнопка
+    inline_key.add(old_name_button)
+
+    mtu = await callback.message.answer('Введите новое время в формате: ЧЧ-ММ', reply_markup=inline_key)
+    async with state.proxy() as data:
+        data['Пятое сообщение'] = mtu.message_id
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_time.set()
     await callback.answer()
@@ -362,9 +380,14 @@ async def no_edit_date(callback:types.CallbackQuery):
 # Получение новой даты, если введена новая
 @disp.message_handler(state=FSM_edit_event.event_new_date)
 async def edit_date(message:types.Message, state:FSMContext):
+    # Удаление инлайн кнопок из предыдущего сообщения
+    async with state.proxy() as data:
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
+                                                      reply_markup=None)
+
     new_date = check_date(message.text)  # Проверка корректности даты
     if new_date[0]:
-        # Решение с форматом даты 2022-02-05 2022-2-5
+        # Решение с форматом даты 2022-02-05 2022-2-5 подумать и вынести в отдельную функцию
         date_mass = message.text.split('-')
         if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
             date_mass[1] = f"0{date_mass[1]}"
@@ -375,7 +398,17 @@ async def edit_date(message:types.Message, state:FSMContext):
         else:
             async with state.proxy() as data:
                 data['Новая дата события'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
-        await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ')
+
+        # Создание кнопки оставить для времени
+        inline_key = InlineKeyboardMarkup()
+        old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
+                                               callback_data='date_no_edit')  # Кнопка
+        inline_key.add(old_name_button)
+
+        mtu = await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ-ММ', reply_markup=inline_key)
+        async with state.proxy() as data:
+            data['Пятое сообщение'] = mtu.message_id
+
         await FSM_edit_event.next()
         await FSM_edit_event.event_new_time.set()
     else:
