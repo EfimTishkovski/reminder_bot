@@ -204,7 +204,7 @@ async def event_time(message: types.Message, state: FSMContext):
 
 # Кнопка "Редактировать события" через FSM
 class FSM_edit_event(StatesGroup):
-    event_keyboard = State()       # Состояние отображение списка собылий в виду кнопок
+    event_keyboard = State()       # Состояние отображение списка событий в виду кнопок
     event_edit = State()           # Состояние редактирования событий
     event_new_name = State()       # Состояние получения нового имени
     event_new_date = State()       # Состояние получения новой даты
@@ -241,7 +241,6 @@ async def edit_events_command(message:types.Message, state:FSMContext):
         data['id'] = user
         data['Первое сообщение'] = mtu.message_id
     await FSM_edit_event.event_keyboard.set()  # Установка нового состояния МС
-    print(data.as_dict())
 
 # Кнопка отмены редактирования
 @disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
@@ -281,7 +280,6 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
             data['Второе сообщение'] = info_to_user.message_id
         await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0], message_id=data['Первое сообщение'],
                                                 reply_markup=None)  # Удаление инлайн кнопок из предыдущего сообщения
-        print(data.as_dict())
     else:
         await callback.message.answer('Что-то пошло не так\n Редактирование отменено')
         await callback.answer()
@@ -325,9 +323,8 @@ async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
     await callback.message.answer(f'{eight_spoked_asterisk}Сохранено прежнее имя события')
     mtu = await callback.message.answer('Введите новую дату в формате: ГГГГ-ММ-ДД', reply_markup=inline_key)
     async with state.proxy() as data:
-        data['Новое имя события'] = data['Имя события']  #?
+        data['Новое имя события'] = data['Имя события']
         data['Четвёртое сообщение'] = mtu.message_id
-    print(data.as_dict())
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
     await callback.answer()
@@ -349,7 +346,6 @@ async def edit_name(message : types.Message, state : FSMContext):
     async with state.proxy() as data:
         data['Новое имя события'] = message.text.lower()
         data['Четвёртое сообщение'] = mtu.message_id
-    print(data.as_dict())
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
 
@@ -515,7 +511,6 @@ async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
     await FSM_delete_event.event_delete.set()
     id_event = callback.data.replace('ueb', '')                # Вытягиваем локальный id события
-    print(callback.from_user.id)
     async with state.proxy() as data:
         event = data[id_event]
         data['Событие'] = event

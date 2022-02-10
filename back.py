@@ -192,3 +192,13 @@ def write_info(data, base, cursor):
         return True
     except:
         return False
+
+# Функция приведения даты к стандартному формату
+def date_standrt(date):
+    date_mass = date.split('-')
+    if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
+        date_mass[1] = f"0{date_mass[1]}"
+    if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
+        date_mass[2] = f"0{date_mass[2]}"
+    return f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
+
