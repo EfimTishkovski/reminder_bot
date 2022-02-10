@@ -438,7 +438,6 @@ async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
         print('Ошибка при замене события')
         await state.finish()
 
-
 # Получение нового времени если оно введено
 @disp.message_handler(state=FSM_edit_event.event_new_time)
 async def edit_time(message:types.Message, state:FSMContext):
