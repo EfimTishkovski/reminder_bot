@@ -547,7 +547,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
 # Стартовое сообщение
 @disp.message_handler(commands=['start'])
 async def welcome(message:types.Message):
-    await rem_bot.send_message(message.chat.id, f'{green_box} Привет! Это бот - напоминалка\n' +
+    await rem_bot.send_message(message.chat.id, f'{public_address_loudspeaker} Привет! Это бот - напоминалка\n' +
                                             'Для взаимодействия используйте кнопки снизу\n' +
                                             'Вызов помощи "/help"')
 
