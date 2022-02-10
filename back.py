@@ -166,3 +166,29 @@ def repeat_name(name_event, id, base, cursor):
 def generate_id():
     out = '@' + str(random.randint(1001, 9999)) + random.choice(ascii_lowercase) + '@' + str(random.randint(0, 999))
     return out
+
+# Функция завершения диалога и записи в базу (для редактирования)
+def write_info(data, base, cursor):
+    try:
+        replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
+                    f"[time] = '{data['Время']}'," \
+                    f"[event] = '{data['Новое имя события']}'," \
+                    f"[status] = '{'wait'}'" \
+                    f"WHERE [id] = {data['id']} AND [event] = '{data['Имя события']}';"
+
+        base_query(base=base, cursor=cursor, query=replace_query)
+        # Запись в журнал
+        time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+        name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
+        user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
+        if data['Имя события'].lower() != data['Новое имя события'].lower():
+            change_name = '>' + data['Новое имя события']  # меняем имя
+        else:
+            change_name = ''  # Имя неизменно
+        log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
+                f"VALUES ({data['id']}, '{user_name[0][0]}'," \
+                f"'{data['Имя события']} {change_name}', 'edit', '{time_now}')"
+        base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
+        return True
+    except:
+        return False

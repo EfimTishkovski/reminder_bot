@@ -210,7 +210,6 @@ class FSM_edit_event(StatesGroup):
     event_new_name = State()       # Состояние получения нового имени
     event_new_date = State()       # Состояние получения новой даты
     event_new_time = State()       # Cостояние получения нового времени
-    write_data = State()           # Запись данных в базу в конце отработки диалога
 
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
@@ -363,7 +362,7 @@ async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
                                                 reply_markup=None)
 
-    await callback.message.answer('Дата осталась неизменной.')
+    await callback.message.answer(f'{eight_spoked_asterisk}Дата осталась неизменной.')
 
     # Создание кнопки оставить для времени
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
@@ -419,16 +418,25 @@ async def edit_date(message:types.Message, state:FSMContext):
 # Сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='time_no_edit'), state=FSM_edit_event.event_new_time)
 async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
-    await FSM_edit_event.next()
-    await FSM_edit_event.write_data.set()
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
-    await callback.message.answer('Время осталось неизменным')
+        data = data.as_dict()
+    await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
     await callback.answer()
-    current_state = await state.get_state()  # Получаем текущее состояние МС
-    print(current_state)
+
+    # Запись изменений в базу и проверка на успех.
+    if write_info(data, base=base, cursor=cursor):
+        await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
+                                      f"Событие: {data['Новое имя события']}\n"
+                                      f"Дата: {data['Дата']}\n"
+                                      f"Время: {data['Время']}")
+        print('Замена произведена успешно')
+        await state.finish()
+    else:
+        print('Ошибка при замене события')
+        await state.finish()
 
 
 # Получение нового времени если оно введено
@@ -438,9 +446,8 @@ async def edit_time(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
-
-    async with state.proxy() as data:
         new_time = check_time(message.text, data['Дата'])
+        data = data.as_dict()
     if new_time[0]:
         # Добавление 0, формат 09-23 вместо 9-23
         # Тут тоже подумать как вынести в функцию и убрать в back.py
@@ -450,50 +457,22 @@ async def edit_time(message:types.Message, state:FSMContext):
             data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
         else:
             data['Время'] = message.text
-        await FSM_edit_event.next()
-        await FSM_edit_event.write_data.set()
+
+        # Запись изменений в базу и проверка на успех.
+        if write_info(data, base=base, cursor=cursor):
+            await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
+                                              f"Событие: {data['Новое имя события']}\n"
+                                              f"Дата: {data['Дата']}\n"
+                                              f"Время: {data['Время']}")
+            print('Замена произведена успешно')
+            await state.finish()
+        else:
+            print('Ошибка при замене события')
+            await state.finish()
+
     else:
         await message.reply(new_time[1])
         await rem_bot.send_message(message.chat.id, 'Введите время снова.')
-
-
-@disp.callback_query_handler(state=FSM_edit_event.write_data)
-async def write_data(callback:types.CallbackQuery, state:FSMContext):
-    print('Работает')
-    # Запись в базу
-    flag = False
-    async with state.proxy() as data:
-        data = data.as_dict()
-    replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
-                        f"[time] = '{data['Время']}'," \
-                        f"[event] = '{data['Новое имя события']}'," \
-                        f"[status] = '{'wait'}'" \
-                        f"WHERE [id] = {data['id']} AND [event] = '{data['Старое имя события']}';"
-    flag = base_query(base=base, cursor=cursor, query=replace_query)
-
-    # Запись в журнал
-    time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
-    name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"
-    user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
-    if data['Старое имя события'].lower() != data['Новое имя события'].lower():
-        change_name = '>' + data['Новое имя события']  # меняем имя
-    else:
-        change_name = ''  # Имя неизменно
-    log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
-                    f"VALUES ({data['id']}, '{user_name[0][0]}'," \
-                    f"'{data['Старое имя события']} {change_name}', 'edit', '{time_now}')"
-    base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
-
-    if flag:
-        await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
-                                        f"Событие: {data['Новое имя события']}\n"
-                                        f"Дата: {data['Дата']}\n"
-                                        f"Время: {data['Время']}")
-        print('Замена произведена успешно')
-        await state.finish()
-    else:
-        print('Ошибка при замене события')
-        await state.finish()
 
 ######################################## РЕДАКТИРОВАНИЕ ###############################################################
 
