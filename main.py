@@ -9,7 +9,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 from emoji import *
 
-# Ограничить название напоминания 31 символов
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
 tok = open('TOKEN.txt', 'r')
@@ -36,8 +35,8 @@ async def stop_func(_):
     stop_base(base, cursor)
 
 # Глобальные переменные
-user_events_glob = []
-length_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
+#user_events_glob = []
+#length_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
@@ -272,7 +271,7 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     event_info = base_query(base=base, cursor=cursor, query=event_info_query, mode='search')
     # Вывод пользователю
     if event_info is not None:
-        info_to_user = await callback.message.answer('Событие: ' + f'{event_info[0][5]}\n' +
+        info_to_user = await callback.message.answer(f'{triangular_flag_on_post}Событие: {event_info[0][5]}\n' +
                                           'Дата: ' + f'{event_info[0][3]}\n' +
                                           'Время: ' + f'{event_info[0][4]}', reply_markup=inline_key)
         async with state.proxy() as data:
@@ -487,24 +486,15 @@ async def show_event(message:types.Message, state:FSMContext):
     await FSM_delete_event.event_keyboard.set()                      # Установка нового состояния МС
     user = message.from_user.id                                      # Получаем имя пользователя
     query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
-    global user_events_glob
-    user_events_glob.clear()                                   # Очистка глобального массива событий
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search') # Поиск событий в базе
-    # Проверка на корректную отработку запроса в БД
-    if data_from_query is not None:
-        user_events_glob.extend(data_from_query)  # Передача массива с событиями в глобальную переменную
-    else:
-        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
-        print('Ошибка с БД при удалении')
-
-    # Инлайновая клавиатура обработки событий.
-    # Массив кнопок с названиями событий
+    # Проверка ответа базы и создание инлайновой клавиатуры.
+    print(data_from_query)
     if data_from_query:
         button_mass = []
         async with state.proxy() as data:
-            for line in user_events_glob:
+            for line in data_from_query:
                 id_button = line[7]          # Получение id события (записи)
-                button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{str(id_button)}'))
+                button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
                 data[id_button] = line[5]    # Получение названия события
 
         # Создание клавиатуры
@@ -512,6 +502,9 @@ async def show_event(message:types.Message, state:FSMContext):
         inline_key.add(*button_mass)                    # добавление массива кнопок в объект клавиатуры
         inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
         await message.answer('События в кнопках', reply_markup=inline_key)
+    elif data_from_query is None:
+        await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
+        print('Ошибка с БД при удалении')
     else:
         await message.answer('Записей нет')
         await state.finish()
