@@ -575,7 +575,7 @@ async def welcome(message:types.Message):
     user_info.clear()  # Очистка словаря с данными пользователя
 
     # Создание кнопок интерфейса бота
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)       # Создание объекта клавиатура
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)  # Создание объекта клавиатура
     btn_create_event = types.KeyboardButton('Добавить событие')    # Кнопка создания нового события
     btn_my_event = types.KeyboardButton('Показать мои события')    # Кнопка просмотра активных событий пользователя
     btn_event_edit = types.KeyboardButton('Редактировать события') # Кнопка редактирования активных событий пользователя
