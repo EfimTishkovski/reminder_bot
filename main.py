@@ -129,21 +129,14 @@ async def event_name(message: types.Message, state: FSMContext):
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
 
-
 # Ловим дату события
 @disp.message_handler(state=FSM_event_user.date)
 async def event_date(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:          # Узнать что это (вроде запись данных)
+    async with state.proxy() as data:
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
         if date_input[0]:
-            # Решение с форматом даты 2022-02-05 2022-2-5
-            date_mass = message.text.split('-')
-            if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
-                date_mass[1] = f"0{date_mass[1]}"
-            if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
-                date_mass[2] = f"0{date_mass[2]}"
-            data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"        # Получение данных от пользователя в словарь
+            data['Дата'] = date_standrt(message.text)  # Приведение даты к стандартному виду
             await FSM_event_user.next()        # Переход к следующему состоянию машины
             await FSM_event_user.time.set()    # Установка к следующего состоянию машины
             await rem_bot.send_message(message.chat.id, 'Введите время')  # Сообщению пользователю что делать дальше
