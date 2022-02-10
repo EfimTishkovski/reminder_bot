@@ -21,6 +21,10 @@ loop = asyncio.get_event_loop()    # Создание цикла
 disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавление цикла в диспетчер,
                                                                # Он запустит полинг и цикл с нашей функцией параллельно.
 
+# Глобальные переменные
+# base - объект соединения с базой определяется в start_func при запуске
+# cursor - объект курсордля работы с базой определяется в start_func при запуске
+
 # Функция начала работы бота, сообщение, запуск в полинге
 async def start_func(_):
     print('Бот запущен')
@@ -33,10 +37,6 @@ async def stop_func(_):
     print('Бот остановлен')
     global base, cursor
     stop_base(base, cursor)
-
-# Глобальные переменные
-#user_events_glob = []
-#length_name = 30            # Ограничение длины имени чтобы инлайн кнопки не гючили.
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ###############################################################
 
@@ -66,7 +66,7 @@ async def reminer_func():
         for line in event_mass:
             if line[3] != 'done':
                 print('Напоминание отправлено', line)
-                await rem_bot.send_message(line[0], f'Напоминание: {line[2]}')    # Отсылка сообщения пользователю
+                await rem_bot.send_message(line[0], f'{police_cars_revolving_light}Напоминание: {line[2]}')  # Отправка сообщения пользователю
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 base_query(base=base, cursor=cursor, query=query)
@@ -339,7 +339,7 @@ async def edit_name(message : types.Message, state : FSMContext):
     await FSM_edit_event.next()
     await FSM_edit_event.event_new_date.set()
 
-# Сработает если нажата кнопка "Оставить прежнюю"
+# Получение новой даты, сработает если нажата кнопка "Оставить прежнюю"
 @disp.callback_query_handler(Text(startswith='date_no_edit'), state=FSM_edit_event.event_new_date)
 async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
@@ -369,21 +369,11 @@ async def edit_date(message:types.Message, state:FSMContext):
     async with state.proxy() as data:
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
                                                       reply_markup=None)
-
+        data = data.as_dict()
     new_date = check_date(message.text)  # Проверка корректности даты
     if new_date[0]:
-        # Решение с форматом даты 2022-02-05 2022-2-5 подумать и вынести в отдельную функцию
-        date_mass = message.text.split('-')
-        if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
-            date_mass[1] = f"0{date_mass[1]}"
-        if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
-            date_mass[2] = f"0{date_mass[2]}"
-            async with state.proxy() as data:
-                data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
-        else:
-            async with state.proxy() as data:
-                data['Дата'] = f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
-
+        # Приведение даты к стандартному виду
+        data['Дата'] = date_standrt(message.text)
         # Создание кнопки оставить для времени
         inline_key = InlineKeyboardMarkup()
         old_time_button = InlineKeyboardButton(text='Оставить прежнее',
@@ -400,7 +390,7 @@ async def edit_date(message:types.Message, state:FSMContext):
         await message.reply(new_date[1])
         await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
 
-# Сработает если нажата кнопка "Оставить прежнее"
+# Получение нового времени, сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='time_no_edit'), state=FSM_edit_event.event_new_time)
 async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
@@ -433,15 +423,8 @@ async def edit_time(message:types.Message, state:FSMContext):
         new_time = check_time(message.text, data['Дата'])
         data = data.as_dict()
     if new_time[0]:
-        # Добавление 0, формат 09-23 вместо 9-23
-        # Тут тоже подумать как вынести в функцию и убрать в back.py
-        time_mass = message.text.split('-')
-        if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
-            time_mass[0] = f'0{time_mass[0]}'
-            data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
-        else:
-            data['Время'] = message.text
-
+        # Приведение времени к стандартному виду
+        data['время'] = time_standart(message.text)
         # Запись изменений в базу и проверка на успех.
         if write_info(data, base=base, cursor=cursor):
             await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
@@ -584,7 +567,7 @@ async def welcome(message:types.Message):
 # Хелп
 @disp.message_handler(commands=['help'])
 async def help(message:types.Message):
-    await rem_bot.send_message(message.chat.id, 'Как с ним общаться:\n' +
+    await rem_bot.send_message(message.chat.id, f'{tangerine}Как с ним общаться:\n' +
                                '/start перезапуск\n' +
                                'Кнопка "Добавить событие" - добавить новое событие\n' +
                                'Кнопка "Показать мои события" - показывает все активные события пользователя запустившего бот\n' +
