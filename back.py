@@ -111,7 +111,7 @@ def check_time(time, date=''):
     date_mass = list(date_mass)                              # Массив пользовательской даты (int)
 
     # Входной шаблон
-    if re.fullmatch(r'\d{1,2}-\d{2}', time) is not None:
+    if re.fullmatch(r'\d{1,2}-\d{1,2}', time) is not None:
         time_mass = map(int, str(time).split('-'))
         time_mass = list(time_mass)
         time_mass_now = map(int, str(time_now).split('-'))
