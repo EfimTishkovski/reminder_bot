@@ -202,3 +202,13 @@ def date_standrt(date):
         date_mass[2] = f"0{date_mass[2]}"
     return f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
 
+# Функция приведения времени к стандарту
+def time_standart(time):
+    time_mass = time.split('-')
+    if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
+        time_mass[0] = f"0{time_mass[0]}"
+    if int(time_mass[1]) < 10 and len(time_mass[1]) < 2:
+        time_mass[1] = f"0{time_mass[1]}"
+    return f"{time_mass[0]}-{time_mass[1]}"
+
+

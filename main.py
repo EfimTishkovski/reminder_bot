@@ -97,17 +97,19 @@ class FSM_event_user(StatesGroup):
 async def event_start(message: types.Message):
     await FSM_event_user.name.set()
     # Образец для пользователя
-    await rem_bot.send_message(message.chat.id, 'ПРИМЕР')
-    await rem_bot.send_message(message.chat.id, 'Напоминание: Что-то очень важное что никак недбзя забыть.\n' +
-                                                'Дата: Дата когда об этом нужно напомгить.\n' +
+    await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}ПРИМЕР')
+    await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}'
+                                                f'Напоминание: Что-то очень важное что никак нельзя забыть.\n' +
+                                                'Дата: Дата когда об этом нужно напомнить.\n' +
                                                 'Время: В какое время напомнить.')
     # Первый запрос
     await rem_bot.send_message(message.chat.id, 'Введите название напоминания')
 
 # Выход из состояний (отмена для диалога ввода даты)
 # "*" - любое состояние МС
-@disp.message_handler(commands=['отмена'], state="*")  # хэндлер срабатывает по команде /отмена
+@disp.message_handler(commands=['отмена', 'cancel'], state="*")  # хэндлер срабатывает по команде /отмена
 @disp.message_handler(Text(equals='отмена', ignore_case=True), state="*")
+@disp.message_handler(Text(equals='cancel', ignore_case=True), state="*")
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()  # Получаем текущее состояние МС
     # Если МС не задействована, то ничего не происходит
@@ -152,17 +154,12 @@ async def event_time(message: types.Message, state: FSMContext):
                  'Имя': message.from_user.first_name,
                  'Имя пользователя': message.from_user.username}
     async with state.proxy() as data:
+        data_event = data.as_dict()  # Данные в памяти в виде словаря
         time_input = check_time(message.text, str(data['Дата']))  # Проверка времени на корректность
         if time_input[0]:
-            # Добавление 0, формат 09-23 вместо 9-23
-            time_mass = message.text.split('-')
-            if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
-                time_mass[0] = f'0{time_mass[0]}'
-                data['Время'] = f"{time_mass[0]}-{time_mass[1]}"
-            else:
-                data['Время'] = message.text
-            data_event = data.as_dict()   # Данные в памяти в виде словаря
-            # послание юзеру, что всё норм
+            # Приведение времени к стандартному формату
+            data_event['Время'] = time_standart(message.text)
+            # Послание юзеру, что всё норм
             await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
                                f"Название: {data_event['Название']} \n" +
