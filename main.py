@@ -162,7 +162,7 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data['Дата'] = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
+        data['Дата'] = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
     await callback.message.answer('Введите время в формате ЧЧ-ММ')
     await callback.answer()
     await FSM_event_user.next()
