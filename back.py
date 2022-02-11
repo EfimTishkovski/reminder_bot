@@ -45,7 +45,7 @@ def check_date(date):
     out_flag = False         # Выходной флаг функции
     correct_digit = False    # Флаг корректных чисел даты (месяц 01-12, день 01-31)
     # Словарь с количеством дней в месяцах
-    date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
+    date_now = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
     day_in_month = {1 : 31,
                     2 : 28,
                     3 : 31,
@@ -59,7 +59,7 @@ def check_date(date):
                     11 : 30,
                     12 : 31}
 
-    if re.fullmatch(r'\d{4,5}\.\d{1,2}\.\d{1,2}', date) is not None:
+    if re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4,6}', date) is not None:
 
         date_mass = map(int, date.split('.'))
         date_mass = list(date_mass)
@@ -67,24 +67,24 @@ def check_date(date):
         date_mass_now = list(date_mass_now)
 
         # Проверка на корректные числа
-        if 1 <= date_mass[1] <= 12 and 1 <= date_mass[2] <= 31:
+        if 1 <= date_mass[1] <= 12 and 1 <= date_mass[0] <= 31:
             # Проверка на корректность дней в месяце (чтобы не было 31 сентября и подобного)
-            if date_mass[2] <= day_in_month[date_mass[1]]:
+            if date_mass[0] <= day_in_month[date_mass[1]]:
                 correct_digit = True
                 # Дописать обработку високосного года и февраля
 
         # Проверка на "более раннюю" дату
         if correct_digit:
             # Сравниваем год
-            if date_mass[0] > date_mass_now[0]:
+            if date_mass[2] > date_mass_now[2]:
                 out_flag = True
-            elif date_mass[0] == date_mass_now[0]:
+            elif date_mass[2] == date_mass_now[2]:
                 # Сравниваем месяц
                 if date_mass[1] > date_mass_now[1]:
                     out_flag = True
                 elif date_mass[1] == date_mass_now[1]:
                     # Сравниваем день
-                    if date_mass[2] >= date_mass_now[2]:
+                    if date_mass[0] >= date_mass_now[0]:
                         out_flag = True
                     else:
                         return False, 'Эта дата уже прошла'

@@ -14,9 +14,10 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(back.time_standart('14:58'), '14:58')
 
     def test_date(self):
-        self.assertTrue(back.check_date('2022.02.15'), True)
-        self.assertTrue(back.check_date('2022.12.11'), True)
-        self.assertTrue(back.check_date('2022.13.15'), False)
+        self.assertTrue(back.check_date('15.02.2022'), True)
+        self.assertTrue(back.check_date('11.12.2022'), True)
+        self.assertTrue(back.check_date('15.13.2022'), False)
+        self.assertTrue(back.check_date('10.02.2022'), False)
 
 if __name__ == '__main__':
     unittest.main()

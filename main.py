@@ -43,9 +43,9 @@ async def stop_func(_):
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 # Фоновая функция отслеживания событий
 async def reminer_func():
-    now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
-    now_date = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
-    now_time_mass = list(map(int, now_time.split('-')))
+    now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
+    now_date = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
+    now_time_mass = list(map(int, now_time.split(':')))
     second = (60 - int(now_time_mass[2])) + 1
     # Стабильный запуск, base и cursor успеют определиться
     if second < 5:
@@ -56,7 +56,7 @@ async def reminer_func():
         break
     print('Запуск фоновой функции')
     while True:
-        now_time = datetime.datetime.now().strftime('%H-%M-%S')  # Текущее время
+        now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
@@ -131,7 +131,7 @@ async def event_name(message: types.Message, state: FSMContext):
         tomorrow_butt = InlineKeyboardButton(text=f'Завтра', callback_data=f'tomorrow')
         inline_key.add(today_butt, tomorrow_butt)
         # Сообщению пользователю что делать дальше
-        mtu = await rem_bot.send_message(message.chat.id, 'Введите дату в формате ГГГГ-ММ-ДД', reply_markup=inline_key)
+        mtu = await rem_bot.send_message(message.chat.id, 'Введите дату в формате ДД.ММ.ГГГГ', reply_markup=inline_key)
         async with state.proxy() as data:
             data['id'] = id_us                        # id пользователя
             data['Название'] = message.text.lower()   # Получение данных от пользователя в словарь
@@ -150,10 +150,10 @@ async def event_date(message: types.Message, state: FSMContext):
             await FSM_event_user.next()        # Переход к следующему состоянию машины
             await FSM_event_user.time.set()    # Установка к следующего состоянию машины
 
-            await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ-ММ')  # Сообщению пользователю что делать дальше
+            await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
         else:
             await rem_bot.send_message(message.chat.id, date_input[1])
-            await rem_bot.send_message(message.chat.id, 'Введите дату снова\n' + 'Формат даты: ГГГГ-ММ-ДД')
+            await rem_bot.send_message(message.chat.id, 'Введите дату снова\n' + 'Формат даты: ДД.ММ.ГГГГ')
 
 # Ловим дату если нажата кнопка сегодня
 @disp.callback_query_handler(Text(startswith='today'), state=FSM_event_user.date)
@@ -163,7 +163,7 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
         data['Дата'] = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
-    await callback.message.answer('Введите время в формате ЧЧ-ММ')
+    await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
     await FSM_event_user.time.set()
@@ -175,10 +175,10 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data_now = datetime.datetime.now().strftime('%Y-%m-%d').split('-')
-        data_now[2] = int(data_now[2]) + 1
-        data['Дата'] = f'{data_now[0]}-{data_now[1]}-{str(data_now[2])}'
-    await callback.message.answer('Введите время в формате ЧЧ-ММ')
+        data_now = datetime.datetime.now().strftime('%d.%m.%Y').split('.')
+        data_now[0] = int(data_now[0]) + 1
+        data['Дата'] = f'{data_now[0]}.{data_now[1]}.{str(data_now[2])}'
+    await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
     await FSM_event_user.time.set()
@@ -211,7 +211,7 @@ async def event_time(message: types.Message, state: FSMContext):
                                         f"'{id_event}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
-            time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+            time_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')  # Текущая дата и время
             log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
                         f"VALUES ({user_info['id']}, '{user_info['Имя']}','{data_event['Название']}', 'create', '{time_now}')"
             base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
@@ -223,7 +223,7 @@ async def event_time(message: types.Message, state: FSMContext):
             await state.finish()  # Завершение работы МС
         else:
             await message.reply(time_input[1])
-            await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ-ММ.')
+            await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
 
 ############################################ СОЗДАНИЕ #################################################################
 
