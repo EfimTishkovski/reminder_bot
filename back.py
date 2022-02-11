@@ -45,7 +45,7 @@ def check_date(date):
     out_flag = False         # Выходной флаг функции
     correct_digit = False    # Флаг корректных чисел даты (месяц 01-12, день 01-31)
     # Словарь с количеством дней в месяцах
-    date_now = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
+    date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
     day_in_month = {1 : 31,
                     2 : 28,
                     3 : 31,
@@ -59,11 +59,11 @@ def check_date(date):
                     11 : 30,
                     12 : 31}
 
-    if re.fullmatch(r'\d{4,5}-\d{1,2}-\d{1,2}', date) is not None:
+    if re.fullmatch(r'\d{4,5}\.\d{1,2}\.\d{1,2}', date) is not None:
 
-        date_mass = map(int, date.split('-'))
+        date_mass = map(int, date.split('.'))
         date_mass = list(date_mass)
-        date_mass_now = map(int, date_now.split('-'))
+        date_mass_now = map(int, date_now.split('.'))
         date_mass_now = list(date_mass_now)
 
         # Проверка на корректные числа
@@ -102,28 +102,28 @@ def check_date(date):
 # Функция проверки корректности времени
 # date - дата от пользователя, проверяется предыдущей функцией имеет формат ГГГГ-ММ-ДД
 def check_time(time, date=''):
-    input_flag = False
-    time_now = datetime.datetime.now().strftime('%H-%M')     # Текущее время
-    date_now = datetime.datetime.now().strftime('%Y-%m-%d')  # Текущая дата
-    date_mass_now = map(int, date_now.split('-'))
+    #input_flag = False
+    time_now = datetime.datetime.now().strftime('%H:%M')     # Текущее время
+    date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
+    date_mass_now = map(int, date_now.split('.'))
     date_mass_now = list(date_mass_now)                      # Массив текущей даты (int)
-    date_mass = map(int, date.split('-'))
+    date_mass = map(int, date.split('.'))
     date_mass = list(date_mass)                              # Массив пользовательской даты (int)
 
     # Входной шаблон
-    if re.fullmatch(r'\d{1,2}-\d{1,2}', time) is not None:
-        time_mass = map(int, str(time).split('-'))
+    if re.fullmatch(r'\d{1,2}:\d{1,2}', time) is not None:
+        time_mass = map(int, str(time).split(':'))
         time_mass = list(time_mass)
-        time_mass_now = map(int, str(time_now).split('-'))
+        time_mass_now = map(int, str(time_now).split(':'))
         time_mass_now = list(time_mass_now)
         # Проверка на корректные числа
         if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
             input_flag = True
         else:
-            return False, f'Числа не корректны, часы 0-23, минуты 0-59.'
+            return False, f'Числа не корректны, часы от 0 до 23, минуты от 0 до 59.'
 
     else:
-        return False, 'Формат времени не корректен, введите время в формате ЧЧ-ММ.'
+        return False, 'Формат времени не корректен, введите время в формате ЧЧ:ММ.'
 
     # Определение следующего дня для времени
     # Проверка на ранее(прошедшее время)
@@ -195,20 +195,20 @@ def write_info(data, base, cursor):
 
 # Функция приведения даты к стандартному формату
 def date_standrt(date):
-    date_mass = date.split('-')
+    date_mass = date.split('.')
     if int(date_mass[1]) < 10 and len(date_mass[1]) < 2:
         date_mass[1] = f"0{date_mass[1]}"
     if int(date_mass[2]) < 10 and len(date_mass[2]) < 2:
         date_mass[2] = f"0{date_mass[2]}"
-    return f"{date_mass[0]}-{date_mass[1]}-{date_mass[2]}"
+    return f"{date_mass[0]}.{date_mass[1]}.{date_mass[2]}"
 
 # Функция приведения времени к стандарту
 def time_standart(time):
-    time_mass = time.split('-')
+    time_mass = time.split(':')
     if int(time_mass[0]) < 10 and len(time_mass[0]) < 2:
         time_mass[0] = f"0{time_mass[0]}"
     if int(time_mass[1]) < 10 and len(time_mass[1]) < 2:
         time_mass[1] = f"0{time_mass[1]}"
-    return f"{time_mass[0]}-{time_mass[1]}"
+    return f"{time_mass[0]}:{time_mass[1]}"
 
 
