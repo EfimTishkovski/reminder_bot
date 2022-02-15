@@ -317,8 +317,10 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
 async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Второе сообщение'],
+        if data['Второе сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Второе сообщение'],
                                                 reply_markup=None)
+            data['Второе сообщение'] = False
     # Создание кнопки для нового имени
     inline_key = InlineKeyboardMarkup()                                   # Создание объекта клавиатуры
     old_name_button = InlineKeyboardButton(text='Оставить прежнее',
@@ -337,8 +339,10 @@ async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
 async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
+        if data['Третье сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
                                                 reply_markup=None)
+            data['Третье сообщение'] = False
     # Создание кнопки оставить для даты
     inline_key = InlineKeyboardMarkup()
     old_name_button = InlineKeyboardButton(text='Оставить прежнюю',
@@ -358,8 +362,10 @@ async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
 async def edit_name(message : types.Message, state : FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
+        if data['Третье сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Третье сообщение'],
                                                 reply_markup=None)
+            data['Третье сообщение'] = False
     # Создание кнопки оставить для даты
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
     old_date_button = InlineKeyboardButton(text='Оставить прежнюю',
@@ -378,8 +384,10 @@ async def edit_name(message : types.Message, state : FSMContext):
 async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
+        if data['четвёртое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
                                                 reply_markup=None)
+            data['Четвёртое сообщение'] = False
 
     await callback.message.answer(f'{eight_spoked_asterisk}Дата осталась неизменной.')
 
@@ -432,8 +440,10 @@ async def edit_date(message:types.Message, state:FSMContext):
 async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
+        if data['Пятое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
+            data['Пятое сообщение'] = False
         data = data.as_dict()
     await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
     await callback.answer()
