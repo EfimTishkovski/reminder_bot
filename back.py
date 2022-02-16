@@ -210,3 +210,9 @@ def time_standart(time):
     if int(time_mass[1]) < 10 and len(time_mass[1]) < 2:
         time_mass[1] = f"0{time_mass[1]}"
     return f"{time_mass[0]}:{time_mass[1]}"
+
+# Функция получения часового пояса пользователя из базы
+def get_time_zone(us_id, base, cursor):
+    query = f"SELECT UTC FROM 'users' WHERE [id] = {us_id} "
+    answer = base_query(base=base, cursor=cursor, query=query, mode='search')
+    return answer[0][0]
