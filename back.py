@@ -81,7 +81,7 @@ def check_date(date):
                 # Дописать обработку високосного года и февраля
         else:
             return False, 'Дата не корректна'
-        """
+        """        
         # Проверка на "более раннюю" дату
         if correct_digit:
             # Сравниваем год
@@ -105,7 +105,7 @@ def check_date(date):
             return True, 'Дата корректна'
         else:
             return False,'Дата не корректна'
-    """
+        """
     else:
         return False, 'Формат даты не корректен'
 
@@ -113,28 +113,30 @@ def check_date(date):
 # date - дата от пользователя, проверяется предыдущей функцией имеет формат ДД.ММ.ГГГГ
 def check_time(time, date=''):
     #input_flag = False
-    time_now = datetime.datetime.now().strftime('%H:%M')     # Текущее время
-    date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
-    date_mass_now = map(int, date_now.split('.'))
-    date_mass_now = list(date_mass_now)                      # Массив текущей даты (int)
-    date_mass = map(int, date.split('.'))
-    date_mass = list(date_mass)                              # Массив пользовательской даты (int)
+    #time_now = datetime.datetime.now().strftime('%H:%M')     # Текущее время
+    #date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
+    #date_mass_now = map(int, date_now.split('.'))
+    #date_mass_now = list(date_mass_now)                      # Массив текущей даты (int)
+    #date_mass = map(int, date.split('.'))
+    #date_mass = list(date_mass)                              # Массив пользовательской даты (int)
 
     # Входной шаблон
     if re.fullmatch(r'\d{1,2}:\d{1,2}', time) is not None:
         time_mass = map(int, str(time).split(':'))
         time_mass = list(time_mass)
-        time_mass_now = map(int, str(time_now).split(':'))
-        time_mass_now = list(time_mass_now)
+        #time_mass_now = map(int, str(time_now).split(':'))
+        #time_mass_now = list(time_mass_now)
         # Проверка на корректные числа
         if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
             input_flag = True
+            return True, ''
+
         else:
             return False, f'Числа не корректны, часы от 0 до 23, минуты от 0 до 59.'
 
     else:
         return False, 'Формат времени не корректен, введите время в формате ЧЧ:ММ.'
-
+    """
     # Определение следующего дня для времени
     # Проверка на ранее(прошедшее время)
     if input_flag:
@@ -161,7 +163,7 @@ def check_time(time, date=''):
                         return False, 'Время уже прошло.'
                 else:
                     return False, 'Дата как-то уже прошла, непонятно... совсем...'
-
+    """
 # Функция проверки имени события в базе (повторяющиеся имена)
 # True - норм, не повторяется
 # False - имя уже занято

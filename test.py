@@ -22,6 +22,13 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(back.check_date('45.18.2022')[0], False)
         self.assertEqual(back.check_date('15-13-2022')[0], False)
 
+    def test_3(self):
+        self.assertEqual(back.check_time('12:40')[0], True)
+        self.assertEqual(back.check_time('24:40')[0], False)
+        self.assertEqual(back.check_time('5:70')[0], False)
+        self.assertEqual(back.check_time('25:70')[0], False)
+        self.assertEqual(back.check_time('7-40')[0], False)
+
 if __name__ == '__main__':
     unittest.main()
 

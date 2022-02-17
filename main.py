@@ -95,8 +95,15 @@ class FSM_event_user(StatesGroup):
 
 # Начало диалога
 @disp.message_handler(lambda message: message.text == 'Добавить событие', state=None)
-async def event_start(message: types.Message):
+async def event_start(message: types.Message, state:FSMContext):
     await FSM_event_user.name.set()
+    # Открываем прокси и записываем данные пользователя
+    us_id = message.from_user.id
+    utc_zone_query = f"SELECT time_zone FROM 'users' WHERE [id] = {us_id}"
+    user_utc_zone = base_query(base=base, cursor=cursor, query=utc_zone_query, mode='search')
+    async with state.proxy() as data:
+        data['id'] = us_id
+        data['time_zone'] = user_utc_zone[0][0]
     # Образец для пользователя
     await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}ПРИМЕР')
     await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}'
@@ -123,6 +130,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
     id_us = message.from_user.id                    # id пользователя
+    # repeat_name() возможно не понадобиться
     if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor):
         await FSM_event_user.next()                 # Переход к следующему состоянию машины
         # Кнопки сегодня и завтра
@@ -133,7 +141,6 @@ async def event_name(message: types.Message, state: FSMContext):
         # Сообщению пользователю что делать дальше
         mtu = await rem_bot.send_message(message.chat.id, 'Введите дату в формате ДД.ММ.ГГГГ', reply_markup=inline_key)
         async with state.proxy() as data:
-            data['id'] = id_us                        # id пользователя
             data['Название'] = message.text.lower()   # Получение данных от пользователя в словарь
             data['Первое сообщение'] = mtu.message_id # Получение id сообщения в словарь
     else:
@@ -147,8 +154,8 @@ async def event_date(message: types.Message, state: FSMContext):
         date_input = check_date(message.text)  # Основная функция проверки
         if date_input[0]:
             data['Дата'] = date_standrt(message.text)  # Приведение даты к стандартному виду
-            await FSM_event_user.next()        # Переход к следующему состоянию машины  #?
-            await FSM_event_user.time.set()    # Установка к следующего состоянию машины
+            await FSM_event_user.next()        # Переход к следующему состоянию машины
+            await FSM_event_user.time.set()    # Установка к следующего состоянию машины ???
 
             await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
         else:
@@ -162,7 +169,8 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data['Дата'] = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
+        #time_zone = data['time_zone']
+        data['Дата'] = datetime.datetime.now(pytz.timezone(data['time_zone'])).strftime('%d.%m.%Y')  # Текущая дата локальная
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
@@ -174,9 +182,9 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data_now = datetime.datetime.now().strftime('%d.%m.%Y').split('.')
-        data_now[0] = int(data_now[0]) + 1
-        data['Дата'] = f'{data_now[0]}.{data_now[1]}.{str(data_now[2])}'
+        data_now = datetime.datetime.now(pytz.timezone(data['time_zone']))#.strftime('%d.%m.%Y')
+        data_tomorrow = data_now + datetime.timedelta(days=1)
+        data['Дата'] = str(data_tomorrow.strftime('%d.%m.%Y'))
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
