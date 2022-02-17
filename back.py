@@ -46,7 +46,7 @@ def check_date(date):
     out_flag = False         # Выходной флаг функции
     correct_digit = False    # Флаг корректных чисел даты (месяц 01-12, день 01-31)
     # Словарь с количеством дней в месяцах
-    date_now = datetime.datetime.utcnow().strftime('%d.%m.%Y')  # Текущая дата в UTC
+    #date_now = datetime.datetime.utcnow().strftime('%d.%m.%Y')  # Текущая дата в UTC
     day_in_month = {1 : 31,
                     2 : 28,
                     3 : 31,
@@ -62,21 +62,26 @@ def check_date(date):
 
     if re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4,6}', date) is not None:
 
-        date_local = datetime.datetime.strptime(date, '%d.%m.%Y')  # Создание объекта локального времени
-        date_uts = date_local.astimezone(pytz.utc).strftime('%d.%m.%Y')  # Перевод даты в utc
+        #date_local = datetime.datetime.strptime(date, '%d.%m.%Y')  # Создание объекта локального времени
+        #date_uts = date_local.astimezone(pytz.utc).strftime('%d.%m.%Y')  # Перевод даты в utc
         #print(date_uts)
-        date_mass = map(int, str(date_uts).split('.'))
+        date_mass = map(int, str(date).split('.'))
         date_mass = list(date_mass)
-        date_mass_now = map(int, date_now.split('.'))
-        date_mass_now = list(date_mass_now)
+        #date_mass_now = map(int, date_now.split('.'))
+        #date_mass_now = list(date_mass_now)
 
         # Проверка на корректные числа
         if 1 <= date_mass[1] <= 12 and 1 <= date_mass[0] <= 31:
             # Проверка на корректность дней в месяце (чтобы не было 31 сентября и подобного)
             if date_mass[0] <= day_in_month[date_mass[1]]:
                 correct_digit = True
+                return True, 'Дата корректна'
+            else:
+                return False, 'Дата не корректна'
                 # Дописать обработку високосного года и февраля
-
+        else:
+            return False, 'Дата не корректна'
+        """
         # Проверка на "более раннюю" дату
         if correct_digit:
             # Сравниваем год
@@ -100,6 +105,7 @@ def check_date(date):
             return True, 'Дата корректна'
         else:
             return False,'Дата не корректна'
+    """
     else:
         return False, 'Формат даты не корректен'
 
