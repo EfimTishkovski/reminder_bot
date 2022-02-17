@@ -155,8 +155,6 @@ async def event_date(message: types.Message, state: FSMContext):
         if date_input[0]:
             data['Дата'] = date_standrt(message.text)  # Приведение даты к стандартному виду
             await FSM_event_user.next()        # Переход к следующему состоянию машины
-            #await FSM_event_user.time.set()    # Установка к следующего состоянию машины ???
-
             await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
         else:
             await rem_bot.send_message(message.chat.id, date_input[1])
@@ -169,7 +167,6 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        #time_zone = data['time_zone']
         data['Дата'] = datetime.datetime.now(pytz.timezone(data['time_zone'])).strftime('%d.%m.%Y')  # Текущая дата локальная
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
@@ -182,7 +179,7 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
         # Удаляем кнопки в предыдущем сообщении
         await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data_now = datetime.datetime.now(pytz.timezone(data['time_zone']))#.strftime('%d.%m.%Y')
+        data_now = datetime.datetime.now(pytz.timezone(data['time_zone']))
         data_tomorrow = data_now + datetime.timedelta(days=1)
         data['Дата'] = str(data_tomorrow.strftime('%d.%m.%Y'))
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
@@ -198,7 +195,7 @@ async def event_time(message: types.Message, state: FSMContext):
                  'Имя пользователя': message.from_user.username}
     async with state.proxy() as data:
         data_event = data.as_dict()  # Данные в памяти в виде словаря
-        time_input = check_time(message.text, str(data['Дата']))  # Проверка времени на корректность
+        time_input = check_time(message.text)  # Проверка времени на корректность
         if time_input[0]:
             # Приведение времени к стандартному формату
             data_event['Время'] = time_standart(message.text)

@@ -43,10 +43,7 @@ def stop_base(base, cursor):
 
 # Функция проверки корректности даты
 def check_date(date):
-    out_flag = False         # Выходной флаг функции
-    correct_digit = False    # Флаг корректных чисел даты (месяц 01-12, день 01-31)
     # Словарь с количеством дней в месяцах
-    #date_now = datetime.datetime.utcnow().strftime('%d.%m.%Y')  # Текущая дата в UTC
     day_in_month = {1 : 31,
                     2 : 28,
                     3 : 31,
@@ -61,109 +58,38 @@ def check_date(date):
                     12 : 31}
 
     if re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4,6}', date) is not None:
-
-        #date_local = datetime.datetime.strptime(date, '%d.%m.%Y')  # Создание объекта локального времени
-        #date_uts = date_local.astimezone(pytz.utc).strftime('%d.%m.%Y')  # Перевод даты в utc
-        #print(date_uts)
         date_mass = map(int, str(date).split('.'))
         date_mass = list(date_mass)
-        #date_mass_now = map(int, date_now.split('.'))
-        #date_mass_now = list(date_mass_now)
-
         # Проверка на корректные числа
         if 1 <= date_mass[1] <= 12 and 1 <= date_mass[0] <= 31:
             # Проверка на корректность дней в месяце (чтобы не было 31 сентября и подобного)
             if date_mass[0] <= day_in_month[date_mass[1]]:
-                correct_digit = True
                 return True, 'Дата корректна'
             else:
                 return False, 'Дата не корректна'
                 # Дописать обработку високосного года и февраля
         else:
             return False, 'Дата не корректна'
-        """        
-        # Проверка на "более раннюю" дату
-        if correct_digit:
-            # Сравниваем год
-            if date_mass[2] > date_mass_now[2]:
-                out_flag = True
-            elif date_mass[2] == date_mass_now[2]:
-                # Сравниваем месяц
-                if date_mass[1] > date_mass_now[1]:
-                    out_flag = True
-                elif date_mass[1] == date_mass_now[1]:
-                    # Сравниваем день
-                    if date_mass[0] >= date_mass_now[0]:
-                        out_flag = True
-                    else:
-                        return False, 'Эта дата уже прошла'
-                else:
-                    return False, 'Эта дата уже прошла'
-            else:
-                return False, 'Эта дата уже прошла'
-        if out_flag:
-            return True, 'Дата корректна'
-        else:
-            return False,'Дата не корректна'
-        """
     else:
         return False, 'Формат даты не корректен'
 
 # Функция проверки корректности времени
 # date - дата от пользователя, проверяется предыдущей функцией имеет формат ДД.ММ.ГГГГ
-def check_time(time, date=''):
-    #input_flag = False
-    #time_now = datetime.datetime.now().strftime('%H:%M')     # Текущее время
-    #date_now = datetime.datetime.now().strftime('%Y.%m.%d')  # Текущая дата
-    #date_mass_now = map(int, date_now.split('.'))
-    #date_mass_now = list(date_mass_now)                      # Массив текущей даты (int)
-    #date_mass = map(int, date.split('.'))
-    #date_mass = list(date_mass)                              # Массив пользовательской даты (int)
-
+def check_time(time):
     # Входной шаблон
     if re.fullmatch(r'\d{1,2}:\d{1,2}', time) is not None:
         time_mass = map(int, str(time).split(':'))
         time_mass = list(time_mass)
-        #time_mass_now = map(int, str(time_now).split(':'))
-        #time_mass_now = list(time_mass_now)
         # Проверка на корректные числа
         if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
             input_flag = True
             return True, ''
-
         else:
             return False, f'Числа не корректны, часы от 0 до 23, минуты от 0 до 59.'
 
     else:
         return False, 'Формат времени не корректен, введите время в формате ЧЧ:ММ.'
-    """
-    # Определение следующего дня для времени
-    # Проверка на ранее(прошедшее время)
-    if input_flag:
-        if date_mass[0] > date_mass_now[0]:
-            return True, ''         # Если время заложено на будущий год и корректно, то оно принимается
-        else:
-            if date_mass[1] > date_mass_now[1]:
-                return True, ''     # Если время заложено на будущий месяц и корректно, то оно принимается
-            else:
-                if date_mass[2] > date_mass_now[2]:
-                    return True, ''  # Если время заложено на будущий день и корректно, то оно принимается
-                elif date_mass[2] == date_mass_now[2]:
-                    # Если время на сегодняшний день проверяем дальше
-                    if time_mass[0] > time_mass_now[0]:        # проверяем часы
-                        return True, ''                        # Время корректно, ещё не прошло, принимается
-                    elif time_mass[0] == time_mass_now[0]:
-                        if time_mass[1] > time_mass_now[1]:    # Проверяем минуты
-                            return True, ''                    # Принято
-                        elif time_mass[1] == time_mass_now[1]:
-                            return False, 'Это прямо сейчас! Давай, действуй, не жди! =)'
-                        else:
-                            return False, 'Время уже прошло.'
-                    else:
-                        return False, 'Время уже прошло.'
-                else:
-                    return False, 'Дата как-то уже прошла, непонятно... совсем...'
-    """
+
 # Функция проверки имени события в базе (повторяющиеся имена)
 # True - норм, не повторяется
 # False - имя уже занято
@@ -228,3 +154,12 @@ def get_time_zone(us_id, base, cursor):
     query = f"SELECT UTC FROM 'users' WHERE [id] = {us_id} "
     answer = base_query(base=base, cursor=cursor, query=query, mode='search')
     return answer[0][0]
+
+# Функция проверки даты, прошла или нет формат UTC
+def past_date(date):
+    date_now = datetime.datetime.utcnow()
+    user_date = datetime.datetime.strptime(date, '%d.%m.%Y %H:%M')
+    if date_now > user_date:
+        return False
+    else:
+        return True
