@@ -155,7 +155,7 @@ async def event_date(message: types.Message, state: FSMContext):
         if date_input[0]:
             data['Дата'] = date_standrt(message.text)  # Приведение даты к стандартному виду
             await FSM_event_user.next()        # Переход к следующему состоянию машины
-            await FSM_event_user.time.set()    # Установка к следующего состоянию машины ???
+            #await FSM_event_user.time.set()    # Установка к следующего состоянию машины ???
 
             await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
         else:
@@ -202,6 +202,9 @@ async def event_time(message: types.Message, state: FSMContext):
         if time_input[0]:
             # Приведение времени к стандартному формату
             data_event['Время'] = time_standart(message.text)
+            # Переводим время в формат UTC
+            local_time = datetime.datetime.strptime(f"{data['Дата']} {data_event['Время']}", '%d.%m.%Y %H:%M')
+            utc_time = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')
             # Послание юзеру, что всё норм
             await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
@@ -211,10 +214,10 @@ async def event_time(message: types.Message, state: FSMContext):
             # Запись события в базу
             id_event = generate_id()   # Генерация id для события
             write_event_to_base_query = f"INSERT INTO 'event_from_users' ([id],[user_name],[first_name],[date],[time]," \
-                                        f"[event],[status],[id_event]) " \
+                                        f"[event],[status],[id_event],[UTC]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait'," \
-                                        f"'{id_event}');"
+                                        f"'{id_event}','{str(utc_time)}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
             time_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')  # Текущая дата и время
