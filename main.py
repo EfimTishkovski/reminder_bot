@@ -43,7 +43,7 @@ async def stop_func(_):
 
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 # Фоновая функция отслеживания событий
-async def reminer_func(utc_zone):
+async def reminer_func():
     now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
     now_date = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
     now_time_mass = list(map(int, now_time.split(':')))
@@ -57,8 +57,7 @@ async def reminer_func(utc_zone):
         break
     print('Запуск фоновой функции')
     while True:
-        utc_zone = get_time_zone()
-        now_time = datetime.datetime.now(pytz.timezone(utc_zone)).strftime('%H:%M:%S')  # Текущее время
+        now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
@@ -73,7 +72,7 @@ async def reminer_func(utc_zone):
                 base_query(base=base, cursor=cursor, query=query)
                 print('Напоминание отправлено', line)
                 # Запись в журнал
-                time_now = datetime.datetime.now(pytz.timezone(utc_zone)).strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+                time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
                 name_query = f"SELECT first_name FROM 'users' WHERE [id] = {line[0]}"
                 user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
                 log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
