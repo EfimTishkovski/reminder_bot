@@ -210,12 +210,13 @@ async def event_time(message: types.Message, state: FSMContext):
         # Приведение времени к стандартному формату
         data_event['Время'] = time_standart(message.text)
         # Переводим время в формат UTC
-        local_time = datetime.datetime.strptime(f"{data_event['Дата']} {data_event['Время']}", '%d.%m.%Y %H:%M')
-        utc_time = local_time.astimezone(pytz.utc)#.strftime('%d.%m.%Y %H:%M')
-        utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')
-        utc_time_now = datetime.datetime.utcnow()
+        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+        # Объект даты от пользователя
+        local_time = zone.localize(datetime.strptime(f"{data_event['Дата']} {data_event['Время']}", '%d.%m.%Y %H:%M'))
+        local_time_now = datetime.now(zone)
+        utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M') # Значение для записи а базу по шаблону
         # Проверка на прошлое
-        if utc_time_now < utc_time:
+        if local_time > local_time_now:
             # Послание юзеру, что всё норм
             await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
@@ -231,7 +232,7 @@ async def event_time(message: types.Message, state: FSMContext):
                                         f"'{id_event}','{utc_time_to_base}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
-            time_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')  # Текущая дата и время
+            time_now = datetime.now().strftime('%d.%m.%Y %H:%M')  # Текущая дата и время
             log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
                         f"VALUES ({user_info['id']}, '{user_info['Имя']}','{data_event['Название']}', 'create', '{time_now}')"
             base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
@@ -241,8 +242,10 @@ async def event_time(message: types.Message, state: FSMContext):
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
                 await state.finish()  # Завершение работы МС
+        elif local_time == local_time_now:
+            await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
         else:
-            await message.reply('Дата уже прошла')
+            await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
     else:
         await message.reply(time_input[1])
         await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
