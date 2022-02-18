@@ -1,5 +1,6 @@
 import unittest
 import back
+import datetime
 
 class TestMethods(unittest.TestCase):
 
@@ -30,7 +31,6 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(back.check_time('7-40')[0], False)
 
     def test_4(self):
-        self.assertEqual(back.past_date('25.02.2022 18:45'), True)
         self.assertEqual(back.past_date('18.02.2022 7:00'), True)
         self.assertEqual(back.past_date('18.01.2022 12:00'), False)
 

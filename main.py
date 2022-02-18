@@ -9,6 +9,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 from emoji import *
 import pytz
+from datetime import datetime
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
@@ -44,8 +45,8 @@ async def stop_func(_):
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 # Фоновая функция отслеживания событий
 async def reminer_func():
-    now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
-    now_date = datetime.datetime.now().strftime('%d.%m.%Y')  # Текущая дата
+    now_time = datetime.now().strftime('%H:%M:%S')  # Текущее время
+    now_date = datetime.now().strftime('%d.%m.%Y')  # Текущая дата
     now_time_mass = list(map(int, now_time.split(':')))
     second = (60 - int(now_time_mass[2])) + 1
     # Стабильный запуск, base и cursor успеют определиться
@@ -57,7 +58,7 @@ async def reminer_func():
         break
     print('Запуск фоновой функции')
     while True:
-        now_time = datetime.datetime.now().strftime('%H:%M:%S')  # Текущее время
+        now_time = datetime.now().strftime('%H:%M:%S')  # Текущее время
         global base, cursor
         query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
                 f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
@@ -153,9 +154,18 @@ async def event_date(message: types.Message, state: FSMContext):
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
         if date_input[0]:
-            data['Дата'] = date_standrt(message.text)  # Приведение даты к стандартному виду
-            await FSM_event_user.next()        # Переход к следующему состоянию машины
-            await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
+            # Дописать проверку на прошлую дату
+            input_date = date_standrt(message.text)  # Приведение даты к стандартному виду
+            zone = pytz.timezone(data['time_zone'])    # Создание объекта часового пояса
+            user_loc_date = zone.localize(datetime.strptime(f"{input_date}", '%d.%m.%Y')) # Объект даты от пользователя
+            loc_date = datetime.now(pytz.timezone(data['time_zone']))                     # Местная локальная дата
+            # Проверка на прошлое
+            if user_loc_date > loc_date:
+                data['Дата'] = input_date
+                await FSM_event_user.next()        # Переход к следующему состоянию машины
+                await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
+            else:
+                await message.reply('Дата прошла, введите другую')
         else:
             await rem_bot.send_message(message.chat.id, date_input[1])
             await rem_bot.send_message(message.chat.id, 'Введите дату снова\n' + 'Формат даты: ДД.ММ.ГГГГ')
@@ -195,13 +205,17 @@ async def event_time(message: types.Message, state: FSMContext):
                  'Имя пользователя': message.from_user.username}
     async with state.proxy() as data:
         data_event = data.as_dict()  # Данные в памяти в виде словаря
-        time_input = check_time(message.text)  # Проверка времени на корректность
-        if time_input[0]:
-            # Приведение времени к стандартному формату
-            data_event['Время'] = time_standart(message.text)
-            # Переводим время в формат UTC
-            local_time = datetime.datetime.strptime(f"{data['Дата']} {data_event['Время']}", '%d.%m.%Y %H:%M')
-            utc_time = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')
+    time_input = check_time(message.text)  # Проверка времени на корректность
+    if time_input[0]:
+        # Приведение времени к стандартному формату
+        data_event['Время'] = time_standart(message.text)
+        # Переводим время в формат UTC
+        local_time = datetime.datetime.strptime(f"{data_event['Дата']} {data_event['Время']}", '%d.%m.%Y %H:%M')
+        utc_time = local_time.astimezone(pytz.utc)#.strftime('%d.%m.%Y %H:%M')
+        utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')
+        utc_time_now = datetime.datetime.utcnow()
+        # Проверка на прошлое
+        if utc_time_now < utc_time:
             # Послание юзеру, что всё норм
             await rem_bot.send_message(message.chat.id, f'{alarm_cloc}Событие: \n' +
                                f"Пользователь: {user_info['Имя']} \n" +
@@ -214,7 +228,7 @@ async def event_time(message: types.Message, state: FSMContext):
                                         f"[event],[status],[id_event],[UTC]) " \
                                 f"VALUES ('{user_info['id']}','{user_info['Имя пользователя']}','{user_info['Имя']}'," \
                                 f"'{data_event['Дата']}','{data_event['Время']}','{data_event['Название']}','wait'," \
-                                        f"'{id_event}','{str(utc_time)}');"
+                                        f"'{id_event}','{utc_time_to_base}');"
             write_event = base_query(base=base, cursor=cursor, query=write_event_to_base_query)
             # Запись в журнал
             time_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')  # Текущая дата и время
@@ -226,10 +240,12 @@ async def event_time(message: types.Message, state: FSMContext):
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
-            await state.finish()  # Завершение работы МС
+                await state.finish()  # Завершение работы МС
         else:
-            await message.reply(time_input[1])
-            await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
+            await message.reply('Дата уже прошла')
+    else:
+        await message.reply(time_input[1])
+        await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
 
 ############################################ СОЗДАНИЕ #################################################################
 
