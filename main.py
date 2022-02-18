@@ -150,12 +150,14 @@ async def event_name(message: types.Message, state: FSMContext):
 # Ловим дату события ввод пользователем
 @disp.message_handler(state=FSM_event_user.date)
 async def event_date(message: types.Message, state: FSMContext):
-    # дописать удаление кнопок сегодня и завтра
+    async with state.proxy() as data:
+        # Удаляем кнопки в предыдущем сообщении
+        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
+                                                reply_markup=None)
     async with state.proxy() as data:
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
         if date_input[0]:
-            # Дописать проверку на прошлую дату
             input_date = date_standrt(message.text)  # Приведение даты к стандартному виду
             zone = pytz.timezone(data['time_zone'])    # Создание объекта часового пояса
             user_loc_date = zone.localize(datetime.strptime(f"{input_date}", '%d.%m.%Y')) # Объект даты от пользователя
