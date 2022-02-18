@@ -9,7 +9,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from back import *
 from emoji import *
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 
 #######################################  ИНИЦИАЛИЗАЦИЯ  ########################################################
 # Получение токена
@@ -152,8 +152,11 @@ async def event_name(message: types.Message, state: FSMContext):
 async def event_date(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         # Удаляем кнопки в предыдущем сообщении
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
+        if data['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
+            data['Первое сообщение'] = False
+
     async with state.proxy() as data:
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
@@ -161,9 +164,10 @@ async def event_date(message: types.Message, state: FSMContext):
             input_date = date_standrt(message.text)  # Приведение даты к стандартному виду
             zone = pytz.timezone(data['time_zone'])    # Создание объекта часового пояса
             user_loc_date = zone.localize(datetime.strptime(f"{input_date}", '%d.%m.%Y')) # Объект даты от пользователя
-            loc_date = datetime.now(pytz.timezone(data['time_zone']))                     # Местная локальная дата
+            loc_date = datetime.now(pytz.timezone(data['time_zone']))\
+                .replace(hour=0, minute=0, second=0, microsecond=0) # Местная локальная дата
             # Проверка на прошлое
-            if user_loc_date > loc_date:
+            if user_loc_date >= loc_date:
                 data['Дата'] = input_date
                 await FSM_event_user.next()        # Переход к следующему состоянию машины
                 await rem_bot.send_message(message.chat.id, 'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
@@ -178,9 +182,11 @@ async def event_date(message: types.Message, state: FSMContext):
 async def today_date(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         # Удаляем кнопки в предыдущем сообщении
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
+        if data['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data['Дата'] = datetime.datetime.now(pytz.timezone(data['time_zone'])).strftime('%d.%m.%Y')  # Текущая дата локальная
+            data['Первое сообщение'] = False
+        data['Дата'] = datetime.now(pytz.timezone(data['time_zone'])).strftime('%d.%m.%Y')  # Текущая дата локальная
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
@@ -190,10 +196,12 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
 async def today_date(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         # Удаляем кнопки в предыдущем сообщении
-        await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
+        if data['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Первое сообщение'],
                                                 reply_markup=None)
-        data_now = datetime.datetime.now(pytz.timezone(data['time_zone']))
-        data_tomorrow = data_now + datetime.timedelta(days=1)
+            data['Первое сообщение'] = False
+        data_now = datetime.now(pytz.timezone(data['time_zone']))
+        data_tomorrow = data_now + timedelta(days=1)
         data['Дата'] = str(data_tomorrow.strftime('%d.%m.%Y'))
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
@@ -242,6 +250,7 @@ async def event_time(message: types.Message, state: FSMContext):
             # Проверка корректности отработки функции
             if write_event is not None:
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
+                await state.finish()  # Завершение работы МС
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
                 await state.finish()  # Завершение работы МС
@@ -249,6 +258,7 @@ async def event_time(message: types.Message, state: FSMContext):
             await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
         else:
             await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
+            #await state.finish()  # Завершение работы МС
     else:
         await message.reply(time_input[1])
         await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
