@@ -147,9 +147,10 @@ async def event_name(message: types.Message, state: FSMContext):
     else:
         await message.reply('Такое событие уже есть. Придумайте другое название.')
 
-# Ловим дату события
+# Ловим дату события ввод пользователем
 @disp.message_handler(state=FSM_event_user.date)
 async def event_date(message: types.Message, state: FSMContext):
+    # дописать удаление кнопок сегодня и завтра
     async with state.proxy() as data:
         # Проверка даты
         date_input = check_date(message.text)  # Основная функция проверки
