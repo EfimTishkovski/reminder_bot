@@ -256,9 +256,9 @@ async def event_time(message: types.Message, state: FSMContext):
                 await state.finish()  # Завершение работы МС
         elif local_time == local_time_now:
             await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
+            await state.finish()  # Завершение работы МС
         else:
             await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
-            #await state.finish()  # Завершение работы МС
     else:
         await message.reply(time_input[1])
         await rem_bot.send_message(message.chat.id, 'Введите время снова ЧЧ:ММ.')
@@ -278,34 +278,36 @@ class FSM_edit_event(StatesGroup):
 # Начало работы редактирования
 @disp.message_handler(lambda message: message.text == 'Редактировать события', state=None)
 async def edit_events_command(message:types.Message, state:FSMContext):
-    user = message.from_user.id  # получаем id пользователя
-    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user}"  # Запрос на поиск событий в базе
+    user_id = message.from_user.id  # получаем id пользователя
+    query = f"SELECT * FROM 'event_from_users' WHERE [id] = {user_id}"  # Запрос на поиск событий в базе
+    user_tz_query = f"SELECT time_zone FROM 'users' WHERE [id] = {user_id}"
+    user_tz = base_query(base=base, cursor=cursor, query=user_tz_query, mode='search') # Получение временной зоны
     data_from_query = base_query(base=base, cursor=cursor, query=query, mode='search') # Получение событий из базы
     # Проверка на ошибку БД
     button_mass = []
-    if data_from_query is not None:
+    if data_from_query is not None and user_tz:
         # Массив кнопок с названиями событий
         async with state.proxy() as data:
             for line in data_from_query:
                 id_button = line[7]
                 button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
                 data[id_button] = line[5]
+            # Создание клавиатуры
+            inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
+            inline_key.add(*button_mass)  # добавление массива кнопок в объект клавиатуры
+            inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
+            mtu = await message.answer('События в кнопках', reply_markup=inline_key)  # mtu - message to user
+
+        # Сохранение id сообщения и id пользователя, пригодятся дальше
+        async with state.proxy() as data:
+            data.clear()
+            data['id'] = user_id
+            data['time_zone'] = user_tz[0][0]
+            data['Первое сообщение'] = mtu.message_id
+        await FSM_edit_event.event_keyboard.set()  # Установка нового состояния МС
     else:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД при редактировании события')
-
-    # Создание клавиатуры
-    inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
-    inline_key.add(*button_mass)  # добавление массива кнопок в объект клавиатуры
-    inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
-    mtu = await message.answer('События в кнопках', reply_markup=inline_key)  # mtu - message to user
-
-    # Сохранение id сообщения и id пользователя, пригодятся дальше
-    async with state.proxy() as data:
-        data.clear()
-        data['id'] = user
-        data['Первое сообщение'] = mtu.message_id
-    await FSM_edit_event.event_keyboard.set()  # Установка нового состояния МС
 
 # Кнопка отмены редактирования
 @disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
@@ -314,7 +316,6 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
     # Если МС не задействована, то ничего не происходит
     if current_state is None:
         return
-
     await callback.message.answer('Отменено')  # Вывод пользователю
     await callback.answer()
     await state.finish()
@@ -425,13 +426,11 @@ async def edit_name(message : types.Message, state : FSMContext):
 async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
     # Удаление инлайн кнопок из предыдущего сообщения
     async with state.proxy() as data:
-        if data['четвёртое сообщение']:
+        if data['Четвёртое сообщение']:
             await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
                                                 reply_markup=None)
             data['Четвёртое сообщение'] = False
-
     await callback.message.answer(f'{eight_spoked_asterisk}Дата осталась неизменной.')
-
     # Создание кнопки оставить для времени
     inline_key = InlineKeyboardMarkup()  # Создание объекта клавиатуры
     old_time_button = InlineKeyboardButton(text='Оставить прежнее',
@@ -460,6 +459,21 @@ async def edit_date(message:types.Message, state:FSMContext):
     if new_date[0]:
         # Приведение даты к стандартному виду
         data['Дата'] = date_standrt(message.text)
+        # Проверка даты на прошлое
+        # Переводим время в формат UTC
+        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+        user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']}", '%d.%m.%Y'))
+        loc_date = datetime.now(pytz.timezone(data['time_zone'])) \
+            .replace(hour=0, minute=0, second=0, microsecond=0)  # Местная локальная дата
+        # Проверка на прошлое
+        if user_loc_date >= loc_date:
+            data['Дата'] = message.text
+            await FSM_event_user.next()  # Переход к следующему состоянию машины
+            await rem_bot.send_message(message.chat.id,
+                                       'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
+        else:
+            await message.reply('Дата прошла, введите другую')
+
         # Создание кнопки оставить для времени
         inline_key = InlineKeyboardMarkup()
         old_time_button = InlineKeyboardButton(text='Оставить прежнее',
@@ -511,11 +525,13 @@ async def edit_time(message:types.Message, state:FSMContext):
             await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
-        new_time = check_time(message.text, data['Дата'])
+        new_time = check_time(message.text)
+        # Проверка времени на прошлое
         data = data.as_dict()
     if new_time[0]:
         # Приведение времени к стандартному виду
-        data['время'] = time_standart(message.text)
+        data['Время'] = time_standart(message.text)
+        # Перевод даты в UTC
         # Запись изменений в базу и проверка на успех.
         if write_info(data, base=base, cursor=cursor):
             await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
