@@ -450,36 +450,34 @@ async def edit_date(message:types.Message, state:FSMContext):
             await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Четвёртое сообщение'],
                                                       reply_markup=None)
             data['Четвёртое сообщение'] = False
-        data = data.as_dict()
-    new_date = check_date(message.text)  # Проверка корректности даты
-    if new_date[0]:
-        # Приведение даты к стандартному виду
-        data['Дата'] = date_standrt(message.text)
-        # Проверка даты на прошлое
-        # Переводим время в формат UTC
-        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
-        user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']}", '%d.%m.%Y'))
-        loc_date = datetime.now(pytz.timezone(data['time_zone'])) \
-            .replace(hour=0, minute=0, second=0, microsecond=0)  # Местная локальная дата
-        # Проверка на прошлое
-        if user_loc_date >= loc_date:
-            data['Дата'] = message.text
+        new_date = check_date(message.text)  # Проверка корректности даты
+        if new_date[0]:
+            # Приведение даты к стандартному виду
+            data['Дата'] = date_standrt(message.text)
+            # Проверка даты на прошлое
+            # Переводим время в формат UTC
+            zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+            user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']}", '%d.%m.%Y'))
+            loc_date = datetime.now(pytz.timezone(data['time_zone'])) \
+                .replace(hour=0, minute=0, second=0, microsecond=0)  # Местная локальная дата
+            # Проверка на прошлое
+            if user_loc_date >= loc_date:
+                data['Дата'] = message.text
 
-            # Создание кнопки оставить для времени
-            inline_key = InlineKeyboardMarkup()
-            old_time_button = InlineKeyboardButton(text='Оставить прежнее',
+                # Создание кнопки оставить для времени
+                inline_key = InlineKeyboardMarkup()
+                old_time_button = InlineKeyboardButton(text='Оставить прежнее',
                                                    callback_data='time_no_edit')  # Кнопка
-            inline_key.add(old_time_button)
+                inline_key.add(old_time_button)
 
-            mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
-            async with state.proxy() as data:
+                mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
                 data['Пятое сообщение'] = mtu.message_id
-            await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
+                await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
+            else:
+                await message.reply('Дата прошла, введите другую')
         else:
-            await message.reply('Дата прошла, введите другую')
-    else:
-        await message.reply(new_date[1])
-        await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
+            await message.reply(new_date[1])
+            await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
 
 # Получение нового времени, сработает если нажата кнопка "Оставить прежнее"
 @disp.callback_query_handler(Text(startswith='time_no_edit'), state=FSM_edit_event.event_new_time)
@@ -517,40 +515,39 @@ async def edit_time(message:types.Message, state:FSMContext):
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
         new_time = check_time(message.text)
-        data = data.as_dict()
-    if new_time[0]:
-        # Приведение времени к стандартному виду
-        data['Время'] = time_standart(message.text)
-        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
-        user_loc_time = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M')) # Дата и время от пользователя
-        local_time = datetime.now(zone).replace(second=0, microsecond=0)  # Получение текущего времени и даты
-        utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')# Для записи а базу и перевод в UTC
-        # Проверка времени на прошлое
-        if user_loc_time > local_time:
-            # Запись изменений в базу и проверка на успех.
-            async with state.proxy() as data:
+        #data = data.as_dict()
+        if new_time[0]:
+            # Приведение времени к стандартному виду
+            data['Время'] = time_standart(message.text)
+            zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+            user_loc_time = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M')) # Дата и время от пользователя
+            local_time = datetime.now(zone).replace(second=0, microsecond=0)  # Получение текущего времени и даты
+            utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')# Для записи а базу и перевод в UTC
+            # Проверка времени на прошлое
+            if user_loc_time > local_time:
+                # Запись изменений в базу и проверка на успех.
                 data['utc'] = utc_time_to_base
-            if write_info(data, base=base, cursor=cursor):
-                await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
+                if write_info(data, base=base, cursor=cursor):
+                    await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
                                               f"Событие: {data['Новое имя события']}\n"
                                               f"Дата: {data['Дата']}\n"
                                               f"Время: {data['Время']}")
-                print('Замена произведена успешно')
-                data.clear()
+                    print('Замена произведена успешно')
+                    data.clear()
+                    await state.finish()
+                else:
+                    print('Ошибка при замене события')
+                    data.clear()
+                    await state.finish()
+            elif user_loc_time == local_time:
+                await message.reply('Это прямо сейчас, не жди, действуй! =)')
                 await state.finish()
             else:
-                print('Ошибка при замене события')
-                data.clear()
-                await state.finish()
-        elif user_loc_time == local_time:
-            await message.reply('Это прямо сейчас, не жди, действуй! =)')
-            await state.finish()
-        else:
-            await message.reply('Время уже прошло, введите другое.')
+                await message.reply('Время уже прошло, введите другое.')
 
-    else:
-        await message.reply(new_time[1])
-        await rem_bot.send_message(message.chat.id, 'Введите время снова.')
+        else:
+            await message.reply(new_time[1])
+            await rem_bot.send_message(message.chat.id, 'Введите время снова.')
 
 ######################################## РЕДАКТИРОВАНИЕ ###############################################################
 
