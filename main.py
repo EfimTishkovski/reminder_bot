@@ -437,7 +437,7 @@ async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
     mtu = await callback.message.answer('Введите новое время в формате: ЧЧ:ММ', reply_markup=inline_key)
     async with state.proxy() as data:
         data['Пятое сообщение'] = mtu.message_id
-    await FSM_edit_event.next()
+    await FSM_edit_event.event_new_time.set()
     await callback.answer()
 
 # Получение новой даты, если введена новая
@@ -474,7 +474,7 @@ async def edit_date(message:types.Message, state:FSMContext):
             mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
             async with state.proxy() as data:
                 data['Пятое сообщение'] = mtu.message_id
-            await FSM_event_user.next()  # Переход к следующему состоянию машины
+            await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
         else:
             await message.reply('Дата прошла, введите другую')
     else:
