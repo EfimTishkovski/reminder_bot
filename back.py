@@ -111,11 +111,12 @@ def write_info(data, base, cursor):
         replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
                     f"[time] = '{data['Время']}'," \
                     f"[event] = '{data['Новое имя события']}'," \
-                    f"[status] = '{'wait'}'" \
+                    f"[status] = '{'wait'}'," \
                     f"[UTC] = '{data['utc']}' " \
                     f"WHERE [id] = {data['id']} AND [event] = '{data['Имя события']}';"
 
-        base_query(base=base, cursor=cursor, query=replace_query)
+        if base_query(base=base, cursor=cursor, query=replace_query) is None:
+            return False
         # Запись в журнал
         time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
         name_query = f"SELECT first_name FROM 'users' WHERE [id] = {data['id']}"

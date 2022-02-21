@@ -522,7 +522,7 @@ async def edit_time(message:types.Message, state:FSMContext):
             zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
             user_loc_time = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M')) # Дата и время от пользователя
             local_time = datetime.now(zone).replace(second=0, microsecond=0)  # Получение текущего времени и даты
-            utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')# Для записи а базу и перевод в UTC
+            utc_time_to_base = user_loc_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')# Для записи а базу и перевод в UTC
             # Проверка времени на прошлое
             if user_loc_time > local_time:
                 # Запись изменений в базу и проверка на успех.
@@ -537,6 +537,7 @@ async def edit_time(message:types.Message, state:FSMContext):
                     await state.finish()
                 else:
                     print('Ошибка при замене события')
+                    await rem_bot.send_message(message.chat.id, 'Что-то пошло не по плану, изменения не сохранены')
                     data.clear()
                     await state.finish()
             elif user_loc_time == local_time:
