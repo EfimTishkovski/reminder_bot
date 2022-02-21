@@ -112,6 +112,7 @@ def write_info(data, base, cursor):
                     f"[time] = '{data['Время']}'," \
                     f"[event] = '{data['Новое имя события']}'," \
                     f"[status] = '{'wait'}'" \
+                    f"[UTC] = '{data['utc']}' " \
                     f"WHERE [id] = {data['id']} AND [event] = '{data['Имя события']}';"
 
         base_query(base=base, cursor=cursor, query=replace_query)
@@ -128,7 +129,8 @@ def write_info(data, base, cursor):
                 f"'{data['Имя события']} {change_name}', 'edit', '{time_now}')"
         base_query(base=base, cursor=cursor, query=log_query)  # Отметка в журнале
         return True
-    except:
+    except sqlite3.Error as erorr:
+        print(erorr)
         return False
 
 # Функция приведения даты к стандартному формату

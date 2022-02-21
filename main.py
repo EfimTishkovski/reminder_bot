@@ -325,7 +325,6 @@ async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
 async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
     id_event = callback.data.replace('ueb', '')      # Вытягиваем id события
     await FSM_edit_event.next()
-    #await FSM_edit_event.event_edit.set()
     # Инлайновая клавиатура обработки событий.
     inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
     edit_button = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')  # Кнопка редактировать
@@ -344,6 +343,7 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
             data['Дата'] = event_info[0][3]
             data['Время'] = event_info[0][4]
             data['Второе сообщение'] = info_to_user.message_id
+            data['utc'] = event_info[0][7]
         await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0], message_id=data['Первое сообщение'],
                                                 reply_markup=None)  # Удаление инлайн кнопок из предыдущего сообщения
     else:
@@ -373,7 +373,6 @@ async def edit_current_event(callback : types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         data['Третье сообщение'] = mtu.message_id
     await FSM_edit_event.next()
-    #await FSM_edit_event.event_new_name.set()
     await callback.answer()
 
 # Получение нового имени, сработает если нажата кнопка "Оставить прежнее"
@@ -396,7 +395,6 @@ async def no_edit_name(callback:types.CallbackQuery, state:FSMContext):
         data['Новое имя события'] = data['Имя события']
         data['Четвёртое сообщение'] = mtu.message_id
     await FSM_edit_event.next()
-    #await FSM_edit_event.event_new_date.set()
     await callback.answer()
 
 # Получение нового имени, сработает если введено новое имя события
@@ -419,7 +417,6 @@ async def edit_name(message : types.Message, state : FSMContext):
         data['Новое имя события'] = message.text.lower()
         data['Четвёртое сообщение'] = mtu.message_id
     await FSM_edit_event.next()
-    #await FSM_edit_event.event_new_date.set()
 
 # Получение новой даты, сработает если нажата кнопка "Оставить прежнюю"
 @disp.callback_query_handler(Text(startswith='date_no_edit'), state=FSM_edit_event.event_new_date)
@@ -441,7 +438,6 @@ async def no_edit_date(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
         data['Пятое сообщение'] = mtu.message_id
     await FSM_edit_event.next()
-    #await FSM_edit_event.event_new_time.set()
     await callback.answer()
 
 # Получение новой даты, если введена новая
@@ -468,24 +464,19 @@ async def edit_date(message:types.Message, state:FSMContext):
         # Проверка на прошлое
         if user_loc_date >= loc_date:
             data['Дата'] = message.text
+
+            # Создание кнопки оставить для времени
+            inline_key = InlineKeyboardMarkup()
+            old_time_button = InlineKeyboardButton(text='Оставить прежнее',
+                                                   callback_data='time_no_edit')  # Кнопка
+            inline_key.add(old_time_button)
+
+            mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
+            async with state.proxy() as data:
+                data['Пятое сообщение'] = mtu.message_id
             await FSM_event_user.next()  # Переход к следующему состоянию машины
-            await rem_bot.send_message(message.chat.id,
-                                       'Введите время в формате ЧЧ:ММ')  # Сообщению пользователю что делать дальше
         else:
             await message.reply('Дата прошла, введите другую')
-
-        # Создание кнопки оставить для времени
-        inline_key = InlineKeyboardMarkup()
-        old_time_button = InlineKeyboardButton(text='Оставить прежнее',
-                                               callback_data='time_no_edit')  # Кнопка
-        inline_key.add(old_time_button)
-
-        mtu = await rem_bot.send_message(message.chat.id, 'Введите новое время в формате: ЧЧ:ММ', reply_markup=inline_key)
-        async with state.proxy() as data:
-            data['Пятое сообщение'] = mtu.message_id
-
-        await FSM_edit_event.next()
-        #await FSM_edit_event.event_new_time.set()
     else:
         await message.reply(new_date[1])
         await rem_bot.send_message(message.chat.id, 'Введите дату снова.')
@@ -526,25 +517,36 @@ async def edit_time(message:types.Message, state:FSMContext):
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
         new_time = check_time(message.text)
-        # Проверка времени на прошлое
         data = data.as_dict()
     if new_time[0]:
         # Приведение времени к стандартному виду
         data['Время'] = time_standart(message.text)
-        # Перевод даты в UTC
-        # Запись изменений в базу и проверка на успех.
-        if write_info(data, base=base, cursor=cursor):
-            await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
+        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+        user_loc_time = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M')) # Дата и время от пользователя
+        local_time = datetime.now(zone).replace(second=0, microsecond=0)  # Получение текущего времени и даты
+        utc_time_to_base = local_time.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')# Для записи а базу и перевод в UTC
+        # Проверка времени на прошлое
+        if user_loc_time > local_time:
+            # Запись изменений в базу и проверка на успех.
+            async with state.proxy() as data:
+                data['utc'] = utc_time_to_base
+            if write_info(data, base=base, cursor=cursor):
+                await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
                                               f"Событие: {data['Новое имя события']}\n"
                                               f"Дата: {data['Дата']}\n"
                                               f"Время: {data['Время']}")
-            print('Замена произведена успешно')
-            data.clear()
+                print('Замена произведена успешно')
+                data.clear()
+                await state.finish()
+            else:
+                print('Ошибка при замене события')
+                data.clear()
+                await state.finish()
+        elif user_loc_time == local_time:
+            await message.reply('Это прямо сейчас, не жди, действуй! =)')
             await state.finish()
         else:
-            print('Ошибка при замене события')
-            data.clear()
-            await state.finish()
+            await message.reply('Время уже прошло, введите другое.')
 
     else:
         await message.reply(new_time[1])
