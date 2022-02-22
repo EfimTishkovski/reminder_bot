@@ -492,7 +492,6 @@ async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
             await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
-        #data = data.as_dict()
         await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
         await callback.answer()
 
