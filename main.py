@@ -343,7 +343,7 @@ async def edit_events_button(callback : types.CallbackQuery, state:FSMContext):
             data['Дата'] = event_info[0][3]
             data['Время'] = event_info[0][4]
             data['Второе сообщение'] = info_to_user.message_id
-            data['utc'] = event_info[0][7]
+            data['utc'] = event_info[0][8]
         await rem_bot.edit_message_reply_markup(chat_id=event_info[0][0], message_id=data['Первое сообщение'],
                                                 reply_markup=None)  # Удаление инлайн кнопок из предыдущего сообщения
     else:
@@ -453,17 +453,15 @@ async def edit_date(message:types.Message, state:FSMContext):
         new_date = check_date(message.text)  # Проверка корректности даты
         if new_date[0]:
             # Приведение даты к стандартному виду
-            data['Дата'] = date_standrt(message.text)
-            # Проверка даты на прошлое
+            input_date = date_standrt(message.text)
+            data['Дата'] = input_date
             # Переводим время в формат UTC
             zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
-            user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']}", '%d.%m.%Y'))
+            user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M'))
             loc_date = datetime.now(pytz.timezone(data['time_zone'])) \
                 .replace(hour=0, minute=0, second=0, microsecond=0)  # Местная локальная дата
             # Проверка на прошлое
             if user_loc_date >= loc_date:
-                data['Дата'] = message.text
-
                 # Создание кнопки оставить для времени
                 inline_key = InlineKeyboardMarkup()
                 old_time_button = InlineKeyboardButton(text='Оставить прежнее',
@@ -472,6 +470,12 @@ async def edit_date(message:types.Message, state:FSMContext):
 
                 mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
                 data['Пятое сообщение'] = mtu.message_id
+
+                # Запись изменений в базу
+                utc_time_to_base = user_loc_date.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')  # Для записи а базу и перевод в UTC
+                data['utc'] = utc_time_to_base
+                if write_info(data, base=base, cursor=cursor) is False:
+                    await rem_bot.send_message(message.chat.id, 'Оп! Ошибка записи изменений')
                 await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
             else:
                 await message.reply('Дата прошла, введите другую')
@@ -488,21 +492,20 @@ async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
             await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Пятое сообщение'],
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
-        data = data.as_dict()
-    await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
-    await callback.answer()
+        await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
+        await callback.answer()
 
-    # Запись изменений в базу и проверка на успех.
-    if write_info(data, base=base, cursor=cursor):
-        await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
+        # Запись изменений в базу и проверка на успех.
+        if write_info(data, base=base, cursor=cursor):
+            await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
                                       f"Событие: {data['Новое имя события']}\n"
                                       f"Дата: {data['Дата']}\n"
                                       f"Время: {data['Время']}")
-        print('Замена произведена успешно')
-        await state.finish()
-    else:
-        print('Ошибка при замене события')
-        await state.finish()
+            print('Замена произведена успешно')
+            await state.finish()
+        else:
+            print('Ошибка при замене события')
+            await state.finish()
 
 # Получение нового времени если оно введено
 @disp.message_handler(state=FSM_edit_event.event_new_time)
@@ -515,7 +518,6 @@ async def edit_time(message:types.Message, state:FSMContext):
                                                 reply_markup=None)
             data['Пятое сообщение'] = False
         new_time = check_time(message.text)
-        #data = data.as_dict()
         if new_time[0]:
             # Приведение времени к стандартному виду
             data['Время'] = time_standart(message.text)
@@ -527,6 +529,7 @@ async def edit_time(message:types.Message, state:FSMContext):
             if user_loc_time > local_time:
                 # Запись изменений в базу и проверка на успех.
                 data['utc'] = utc_time_to_base
+                print(data)
                 if write_info(data, base=base, cursor=cursor):
                     await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
                                               f"Событие: {data['Новое имя события']}\n"
