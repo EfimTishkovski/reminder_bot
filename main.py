@@ -471,12 +471,8 @@ async def edit_date(message:types.Message, state:FSMContext):
                 mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
                 data['Пятое сообщение'] = mtu.message_id
 
-                # Запись изменений в базу
-                utc_time_to_base = user_loc_date.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')  # Для записи а базу и перевод в UTC
-                data['utc'] = utc_time_to_base
-                if write_info(data, base=base, cursor=cursor) is False:
-                    await rem_bot.send_message(message.chat.id, 'Оп! Ошибка записи изменений')
                 await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
+                await data.save()
             else:
                 await message.reply('Дата прошла, введите другую')
         else:
@@ -494,8 +490,11 @@ async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
             data['Пятое сообщение'] = False
         await callback.message.answer(f'{eight_spoked_asterisk}Время осталось неизменным')
         await callback.answer()
-
-        # Запись изменений в базу и проверка на успех.
+        # Запись изменений в базу
+        zone = pytz.timezone(data['time_zone'])  # Создание объекта часового пояса
+        user_loc_date = zone.localize(datetime.strptime(f"{data['Дата']} {data['Время']}", '%d.%m.%Y %H:%M'))
+        utc_time_to_base = user_loc_date.astimezone(pytz.utc).strftime('%d.%m.%Y %H:%M')  # Для записи а базу и перевод в UTC
+        data['utc'] = utc_time_to_base
         if write_info(data, base=base, cursor=cursor):
             await callback.message.answer(f"{alarm_cloc}Событие успешно изменено\n"
                                       f"Событие: {data['Новое имя события']}\n"
@@ -529,7 +528,6 @@ async def edit_time(message:types.Message, state:FSMContext):
             if user_loc_time > local_time:
                 # Запись изменений в базу и проверка на успех.
                 data['utc'] = utc_time_to_base
-                print(data)
                 if write_info(data, base=base, cursor=cursor):
                     await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
                                               f"Событие: {data['Новое имя события']}\n"
