@@ -529,6 +529,7 @@ async def edit_time(message:types.Message, state:FSMContext):
             if user_loc_time > local_time:
                 # Запись изменений в базу и проверка на успех.
                 data['utc'] = utc_time_to_base
+                print(data)
                 if write_info(data, base=base, cursor=cursor):
                     await rem_bot.send_message(message.chat.id, f"{alarm_cloc}Событие успешно изменено\n"
                                               f"Событие: {data['Новое имя события']}\n"

@@ -108,6 +108,7 @@ def generate_id():
 # Функция завершения диалога и записи в базу (для редактирования)
 def write_info(data, base, cursor):
     try:
+        print(data)
         replace_query = f"UPDATE 'event_from_users' SET [date] = '{data['Дата']}'," \
                     f"[time] = '{data['Время']}'," \
                     f"[event] = '{data['Новое имя события']}'," \
