@@ -641,7 +641,7 @@ async def welcome(message:types.Message):
                                             'Настройки "/settings"')
 
     # Получение информации о пользователе запустившем бот.
-    date = message.date.strftime('%Y-%m-%d %H:%M:%S')
+    date = message.date.strftime('%d.%m.%Y %H:%M:%S')
     user_info = {'id': message.from_user.id,
                  'Имя': message.from_user.first_name,
                  'Имя пользователя': message.from_user.username,
@@ -656,9 +656,11 @@ async def welcome(message:types.Message):
         # Добавление пользователя в базу
         await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
         # Дописать выбор часового пояса
-        query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
+        await rem_bot.send_message(message.chat.id, 'Часовой пояс по умолчанию: Беларусь UTC+03:00\n'
+                                                    'Чтобы выбрать другой зайдите в настройки "/settings"')
+        query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date],[time_zone]) " \
                             f"VALUES ('{user_info['id']}','{user_info['Имя']}'," \
-                            f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
+                            f"'{user_info['Имя пользователя']}','{user_info['Дата']}','Europe/Minsk');"
         if base_query(base=base, cursor=cursor, query=query_user_insert):
             print('Добавлен новый пользователь')
             print(user_info)
@@ -688,7 +690,27 @@ async def help(message:types.Message):
                                'Настроить часовой пояс: /settings')
 
 # Настройки
+@disp.message_handler(commands=['settings'])
+async def settings(message:types.Message):
 
+    button_belerus = InlineKeyboardButton(text=f'{belarus}Беларусь UTC+03:00', callback_data='set_belarus')
+    button_russia_moskau = InlineKeyboardButton(text=f'{russia}Россия(Москва) UTC+03:00', callback_data='set_russia_moskau')
+    button_russia_vladivostok = InlineKeyboardButton(text=f'{russia}Россия(Владивосток) UTC+10:00', callback_data='set_russia_vladivostok')
+    button_russia_kaliningrad = InlineKeyboardButton(text=f'{russia}Россия(Калининград) UTC+02:00', callback_data='set_russia_kaliningrad')
+    button_ukraine = InlineKeyboardButton(text=f'{ukraine}Украина UTC+02:00', callback_data='set_ukraine')
+    button_poland = InlineKeyboardButton(text=f'{poland}Польша UTC+01:00', callback_data='set_poland')
+    button_czech_republic = InlineKeyboardButton(text=f'{czech}Чехия UTC+01:00', callback_data='set_czech')
+    button_italy = InlineKeyboardButton(text=f'{italy}Италия UTC+01:00', callback_data='set_italy')
+    button_litva = InlineKeyboardButton(text=f'{litva}Литва UTC+02:00', callback_data='set_litva')
+    button_germany = InlineKeyboardButton(text=f'{germany}Германия UTC+01:00', callback_data='set_germany')
+    button_antarctida = InlineKeyboardButton(text=f'{antarctida}Антарктида(Станция Восток) UTC+06:00', callback_data='set_antarctida')
+
+    In_buttons = InlineKeyboardMarkup(row_width=2)
+    In_buttons.add(button_belerus, button_russia_moskau, button_russia_vladivostok, button_russia_kaliningrad,
+                   button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
+                   button_antarctida)
+
+    await rem_bot.send_message(message.chat.id, 'Выберите часовой пояс', reply_markup=In_buttons)
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
