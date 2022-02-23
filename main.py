@@ -655,7 +655,6 @@ async def welcome(message:types.Message):
     else:
         # Добавление пользователя в базу
         await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
-        # Дописать выбор часового пояса
         await rem_bot.send_message(message.chat.id, 'Часовой пояс по умолчанию: Беларусь UTC+03:00\n'
                                                     'Чтобы выбрать другой зайдите в настройки "/settings"')
         query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date],[time_zone]) " \
@@ -689,9 +688,10 @@ async def help(message:types.Message):
                                'то написать в сообщении: отмена\n' +
                                'Настроить часовой пояс: /settings')
 
-# Настройки
+# Настройки переписать через FSM     Сообщение с текущими настройками > выбор изменить или нет если да > кнопки с странами
+# нет > сохранение выход и сообщение с текущими настройками
 @disp.message_handler(commands=['settings'])
-async def settings(message:types.Message):
+async def settings(message:types.Message, state:FSMContext):
 
     button_belerus = InlineKeyboardButton(text=f'{belarus}Беларусь UTC+03:00', callback_data='set_belarus')
     button_russia_moskau = InlineKeyboardButton(text=f'{russia}Россия(Москва) UTC+03:00', callback_data='set_russia_moskau')
@@ -710,7 +710,33 @@ async def settings(message:types.Message):
                    button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
                    button_antarctida)
 
-    await rem_bot.send_message(message.chat.id, 'Выберите часовой пояс', reply_markup=In_buttons)
+    mtu = await rem_bot.send_message(message.chat.id, 'Выберите часовой пояс', reply_markup=In_buttons)
+    async with state.proxy() as settigs_tz:
+        settigs_tz['Сообщение с выбором зоны'] = mtu.message_id
+
+@disp.callback_query_handler(Text(startswith='set'))
+async def set_user_time_zone(callback:types.CallbackQuery):
+    # Дописать удаление кнопок после выбора
+    time_zones = {'belarus' : 'Europe/Minsk',
+                  'russia_moskau' : '',
+                  'russia_vladivostok' : '',
+                  'russia_kaliningrad' : '',
+                  'ukraine' : '',
+                  'poland' : 'Poland',
+                  'set_czech' : '',
+                  'set_italy' : '',
+                  'litva' : '',
+                  'germany' : '',
+                  'antarctid' : ''
+    }
+    user_id = callback.from_user.id
+    name_tz = callback.data.replace('set_', '')      # Вытягиваем название часового пояса
+    current_tz = time_zones[name_tz]                 # Часовой пояс выбранный пользователем
+    tz_query = f"UPDATE 'users' SET [time_zone] = '{current_tz}' WHERE [id] = {user_id}"
+    if base_query(base=base, cursor=cursor, query=tz_query):
+        pass
+    else:
+        pass
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
