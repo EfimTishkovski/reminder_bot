@@ -45,10 +45,9 @@ async def stop_func(_):
 ######################################## ФУНКЦИЯ ОТСЛЕЖИВАНИЯ СОБЫТИЙ #################################################
 # Фоновая функция отслеживания событий
 async def reminer_func():
-    now_time = datetime.now().strftime('%H:%M:%S')  # Текущее время
-    now_date = datetime.now().strftime('%d.%m.%Y')  # Текущая дата
+    now_time = datetime.utcnow().strftime('%d:%m:%Y:%H:%M:%S')  # Текущее время и дата для запуска функции
     now_time_mass = list(map(int, now_time.split(':')))
-    second = (60 - int(now_time_mass[2])) + 1
+    second = (60 - int(now_time_mass[5])) + 1
     # Стабильный запуск, base и cursor успеют определиться
     if second < 5:
         second = 5
@@ -58,22 +57,22 @@ async def reminer_func():
         break
     print('Запуск фоновой функции')
     while True:
-        now_time = datetime.now().strftime('%H:%M:%S')  # Текущее время
+        now_time = datetime.utcnow().strftime('%d.%m.%Y %H:%M')  # Текущее время и дата
         global base, cursor
-        query = f"SELECT id, user_name, event, status FROM 'event_from_users' " \
-                f"WHERE [date] = '{now_date}' AND [time] = '{now_time[:-3]}'"
+        query = f"SELECT id, user_name, event, status FROM 'event_from_users' WHERE [utc] = '{now_time}'"
         # Получение событий из базы
         event_mass = base_query(base=base, cursor=cursor, query=query, mode='search')
         # Отсылка событий по одному
         for line in event_mass:
             if line[3] != 'done':
-                await rem_bot.send_message(line[0], f'{police_cars_revolving_light}Напоминание: {line[2]}')  # Отправка сообщения пользователю
+                # Отправка сообщения пользователю
+                await rem_bot.send_message(line[0], f'{police_cars_revolving_light}Напоминание: {line[2]}')
                 query = f"UPDATE 'event_from_users' SET [status] = 'done' " \
                         f"WHERE [id] = {line[0]} AND [event] = '{line[2]}';"
                 base_query(base=base, cursor=cursor, query=query)
                 print('Напоминание отправлено', line)
                 # Запись в журнал
-                time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+                time_now = datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
                 name_query = f"SELECT first_name FROM 'users' WHERE [id] = {line[0]}"
                 user_name = base_query(base=base, cursor=cursor, query=name_query, mode='search')
                 log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
