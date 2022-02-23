@@ -637,7 +637,8 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
 async def welcome(message:types.Message):
     await rem_bot.send_message(message.chat.id, f'{public_address_loudspeaker} Привет! Это бот - напоминалка\n' +
                                             'Для взаимодействия используйте кнопки снизу\n' +
-                                            'Вызов помощи "/help"')
+                                            'Вызов помощи "/help"\n' +
+                                            'Настройки "/settings"')
 
     # Получение информации о пользователе запустившем бот.
     date = message.date.strftime('%Y-%m-%d %H:%M:%S')
@@ -654,6 +655,7 @@ async def welcome(message:types.Message):
     else:
         # Добавление пользователя в базу
         await rem_bot.send_message(message.chat.id, f"Привет, {user_info['Имя']}, я вижу тебя впервые, но запомню.")
+        # Дописать выбор часового пояса
         query_user_insert = f"INSERT INTO 'users' ([id],[first_name],[username],[date]) " \
                             f"VALUES ('{user_info['id']}','{user_info['Имя']}'," \
                             f"'{user_info['Имя пользователя']}','{user_info['Дата']}');"
@@ -682,7 +684,11 @@ async def help(message:types.Message):
                                'Кнопка "Редактировать события" - открывает менюшку редактирования событий\n' +
                                'Кнопка "Удалить событие" - удаляет событие\n' +
                                'Для отмены нажать кнопку отмена, если такой нет, '
-                               'то написать в сообщении: отмена')
+                               'то написать в сообщении: отмена\n' +
+                               'Настроить часовой пояс: /settings')
+
+# Настройки
+
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
