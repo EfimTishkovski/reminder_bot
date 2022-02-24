@@ -704,12 +704,12 @@ class FSM_settings(StatesGroup):
 async def settings(message:types.Message, state:FSMContext):
     tz_query = f"SELECT [time_zone] FROM 'users' WHERE [id] = {message.chat.id}"
     user_tz = base_query(base=base, cursor=cursor, query=tz_query, mode='search')[0][0]
+    user_count = 'Неуказанна'
     if user_tz:
         for country, t_zone in time_zones.items():
             if t_zone == user_tz:
                 user_count = country.title()
-    else:
-        user_count = 'Неуказанна'
+
     button_edit = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')
     button_close = InlineKeyboardButton(text='Закрыть', callback_data='click_close')
     keyboard = InlineKeyboardMarkup().add(button_edit, button_close)
@@ -778,6 +778,7 @@ async def set_user_time_zone(callback:types.CallbackQuery, state:FSMContext):
 
     tz_query = f"UPDATE 'users' SET [time_zone] = '{current_tz}' WHERE [id] = {user_id}"
     if base_query(base=base, cursor=cursor, query=tz_query):
+        user_count = 'Неуказанна'
         for country, t_zone in time_zones.items():
             if t_zone == current_tz:
                 user_count = country.title()
