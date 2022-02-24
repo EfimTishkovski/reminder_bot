@@ -695,24 +695,25 @@ async def help(message:types.Message):
 class FSM_settings(StatesGroup):
     first_message = State()
     choise_tz = State()
-    save = State()
 
 # Функция обработки команды /settings (Настройки)
 @disp.message_handler(commands=['settings'], state=None)
 async def settings(message:types.Message, state:FSMContext):
     tz_query = f"SELECT [time_zone] FROM 'users' WHERE [id] = {message.chat.id}"
     user_tz = base_query(base=base, cursor=cursor, query=tz_query, mode='search')[0][0]
+    for country, t_zone in time_zones.items():
+        if t_zone == user_tz:
+            user_count = country.title()
     if user_tz is False:
-        user_tz = 'Неуказанна'
+        user_count = 'Неуказанна'
     button_edit = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')
     button_close = InlineKeyboardButton(text='Закрыть', callback_data='click_close')
     keyboard = InlineKeyboardMarkup().add(button_edit, button_close)
-    mtu = await rem_bot.send_message(message.chat.id, f'Настройки\nЧасовой пояс: {user_tz}', reply_markup=keyboard)
+    mtu = await rem_bot.send_message(message.chat.id, f'{wrench}Настройки\nЧасовой пояс: {user_count}', reply_markup=keyboard)
     async with state.proxy() as sett:
         sett['Первое сообщение'] = mtu.message_id
         sett['id'] = message.from_user.id
     await FSM_settings.first_message.set()
-
 
 # Функция обработки нажатия кнопки "Закрыть"
 @disp.callback_query_handler(Text(startswith='click_close'), state=FSM_settings.first_message)
@@ -722,17 +723,19 @@ async def close_settings(callback:types.CallbackQuery, state:FSMContext):
             await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Первое сообщение'],
                                                     reply_markup=None)
             sett['Первое сообщение'] = False
-        sett.clear()
     await callback.message.answer('Настройки сохранены')
     await callback.answer()
-
     await state.finish()
 
 @disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_settings.first_message)
 async def set_time_zone(callback:types.CallbackQuery, state:FSMContext):
-
+    async with state.proxy() as sett:
+        if sett['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Первое сообщение'],
+                                                    reply_markup=None)
+            sett['Первое сообщение'] = False
     button_belerus = InlineKeyboardButton(text=f'{belarus}Беларусь UTC+03:00', callback_data='set_belarus')
-    button_russia_moskau = InlineKeyboardButton(text=f'{russia}Россия(Москва) UTC+03:00', callback_data='set_russia_moskau')
+    button_russia_moskau = InlineKeyboardButton(text=f'{russia}Россия(Москва) UTC+03:00', callback_data='set_russia_moscow')
     button_russia_vladivostok = InlineKeyboardButton(text=f'{russia}Россия(Владивосток) UTC+10:00', callback_data='set_russia_vladivostok')
     button_russia_kaliningrad = InlineKeyboardButton(text=f'{russia}Россия(Калининград) UTC+02:00', callback_data='set_russia_kaliningrad')
     button_ukraine = InlineKeyboardButton(text=f'{ukraine}Украина UTC+02:00', callback_data='set_ukraine')
@@ -742,39 +745,41 @@ async def set_time_zone(callback:types.CallbackQuery, state:FSMContext):
     button_litva = InlineKeyboardButton(text=f'{litva}Литва UTC+02:00', callback_data='set_litva')
     button_germany = InlineKeyboardButton(text=f'{germany}Германия UTC+01:00', callback_data='set_germany')
     button_antarctida = InlineKeyboardButton(text=f'{antarctida}Антарктида(Станция Восток) UTC+06:00', callback_data='set_antarctida')
+    button_cancel = InlineKeyboardButton(text=f'Отмена', callback_data='cancel')
 
     In_buttons = InlineKeyboardMarkup(row_width=2)
     In_buttons.add(button_belerus, button_russia_moskau, button_russia_vladivostok, button_russia_kaliningrad,
                    button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
                    button_antarctida)
+    In_buttons.add(button_cancel)
 
     await callback.message.answer('Выберите часовой пояс', reply_markup=In_buttons)
     await callback.answer()
     await FSM_settings.next()
 
-@disp.callback_query_handler(Text(startswith='set'), state=FSM_settings.first_message)
+@disp.callback_query_handler(Text(startswith='set'), state=FSM_settings.choise_tz)
 async def set_user_time_zone(callback:types.CallbackQuery, state:FSMContext):
-    # Дописать удаление кнопок после выбора
-    time_zones = {'belarus' : 'Europe/Minsk',
-                  'russia_moskau' : '',
-                  'russia_vladivostok' : '',
-                  'russia_kaliningrad' : '',
-                  'ukraine' : '',
-                  'poland' : 'Poland',
-                  'set_czech' : '',
-                  'set_italy' : '',
-                  'litva' : '',
-                  'germany' : '',
-                  'antarctida' : ''
-    }
+    async with state.proxy() as sett:
+        if sett['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Первое сообщение'],
+                                                    reply_markup=None)
+            sett['Первое сообщение'] = False
+        sett.clear()
     user_id = callback.from_user.id
     name_tz = callback.data.replace('set_', '')      # Вытягиваем название часового пояса
     current_tz = time_zones[name_tz]                 # Часовой пояс выбранный пользователем
+    await callback.answer()
+    await state.finish()
+
     tz_query = f"UPDATE 'users' SET [time_zone] = '{current_tz}' WHERE [id] = {user_id}"
     if base_query(base=base, cursor=cursor, query=tz_query):
-        pass
+        await callback.message.answer(f'{wrench}Настройки\nЧасовой пояс: {current_tz}')
+        await callback.message.answer('Настройки сохранены')
+        await state.finish()
     else:
-        pass
+        await callback.message.answer('Ошибка при сохранении настроек')
+        await state.finish()
+
 ############################################### НАСТРОЙКИ ##############################################################
 
 # Функция кнопки "Показать мои события"
