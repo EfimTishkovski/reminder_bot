@@ -688,10 +688,48 @@ async def help(message:types.Message):
                                'то написать в сообщении: отмена\n' +
                                'Настроить часовой пояс: /settings')
 
-# Настройки переписать через FSM     Сообщение с текущими настройками > выбор изменить или нет если да > кнопки с странами
+# Настройки переписать через FSM  Сообщение с текущими настройками > выбор изменить или нет если да > кнопки с странами
 # нет > сохранение выход и сообщение с текущими настройками
-@disp.message_handler(commands=['settings'])
+
+############################################### НАСТРОЙКИ ##############################################################
+class FSM_settings(StatesGroup):
+    first_message = State()
+    choise_tz = State()
+    save = State()
+
+# Функция обработки команды /settings (Настройки)
+@disp.message_handler(commands=['settings'], state=None)
 async def settings(message:types.Message, state:FSMContext):
+    tz_query = f"SELECT [time_zone] FROM 'users' WHERE [id] = {message.chat.id}"
+    user_tz = base_query(base=base, cursor=cursor, query=tz_query, mode='search')[0][0]
+    if user_tz is False:
+        user_tz = 'Неуказанна'
+    button_edit = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')
+    button_close = InlineKeyboardButton(text='Закрыть', callback_data='click_close')
+    keyboard = InlineKeyboardMarkup().add(button_edit, button_close)
+    mtu = await rem_bot.send_message(message.chat.id, f'Настройки\nЧасовой пояс: {user_tz}', reply_markup=keyboard)
+    async with state.proxy() as sett:
+        sett['Первое сообщение'] = mtu.message_id
+        sett['id'] = message.from_user.id
+    await FSM_settings.first_message.set()
+
+
+# Функция обработки нажатия кнопки "Закрыть"
+@disp.callback_query_handler(Text(startswith='click_close'), state=FSM_settings.first_message)
+async def close_settings(callback:types.CallbackQuery, state:FSMContext):
+    async with state.proxy() as sett:
+        if sett['Первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Первое сообщение'],
+                                                    reply_markup=None)
+            sett['Первое сообщение'] = False
+        sett.clear()
+    await callback.message.answer('Настройки сохранены')
+    await callback.answer()
+
+    await state.finish()
+
+@disp.callback_query_handler(Text(startswith='click_edit'), state=FSM_settings.first_message)
+async def set_time_zone(callback:types.CallbackQuery, state:FSMContext):
 
     button_belerus = InlineKeyboardButton(text=f'{belarus}Беларусь UTC+03:00', callback_data='set_belarus')
     button_russia_moskau = InlineKeyboardButton(text=f'{russia}Россия(Москва) UTC+03:00', callback_data='set_russia_moskau')
@@ -710,12 +748,12 @@ async def settings(message:types.Message, state:FSMContext):
                    button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
                    button_antarctida)
 
-    mtu = await rem_bot.send_message(message.chat.id, 'Выберите часовой пояс', reply_markup=In_buttons)
-    async with state.proxy() as settigs_tz:
-        settigs_tz['Сообщение с выбором зоны'] = mtu.message_id
+    await callback.message.answer('Выберите часовой пояс', reply_markup=In_buttons)
+    await callback.answer()
+    await FSM_settings.next()
 
-@disp.callback_query_handler(Text(startswith='set'))
-async def set_user_time_zone(callback:types.CallbackQuery):
+@disp.callback_query_handler(Text(startswith='set'), state=FSM_settings.first_message)
+async def set_user_time_zone(callback:types.CallbackQuery, state:FSMContext):
     # Дописать удаление кнопок после выбора
     time_zones = {'belarus' : 'Europe/Minsk',
                   'russia_moskau' : '',
@@ -727,7 +765,7 @@ async def set_user_time_zone(callback:types.CallbackQuery):
                   'set_italy' : '',
                   'litva' : '',
                   'germany' : '',
-                  'antarctid' : ''
+                  'antarctida' : ''
     }
     user_id = callback.from_user.id
     name_tz = callback.data.replace('set_', '')      # Вытягиваем название часового пояса
@@ -737,6 +775,7 @@ async def set_user_time_zone(callback:types.CallbackQuery):
         pass
     else:
         pass
+############################################### НАСТРОЙКИ ##############################################################
 
 # Функция кнопки "Показать мои события"
 @disp.message_handler(lambda message: message.text == 'Показать мои события')
