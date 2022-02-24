@@ -704,10 +704,11 @@ class FSM_settings(StatesGroup):
 async def settings(message:types.Message, state:FSMContext):
     tz_query = f"SELECT [time_zone] FROM 'users' WHERE [id] = {message.chat.id}"
     user_tz = base_query(base=base, cursor=cursor, query=tz_query, mode='search')[0][0]
-    for country, t_zone in time_zones.items():
-        if t_zone == user_tz:
-            user_count = country.title()
-    if user_tz is False:
+    if user_tz:
+        for country, t_zone in time_zones.items():
+            if t_zone == user_tz:
+                user_count = country.title()
+    else:
         user_count = 'Неуказанна'
     button_edit = InlineKeyboardButton(text='Редактировать', callback_data='click_edit')
     button_close = InlineKeyboardButton(text='Закрыть', callback_data='click_close')
@@ -755,18 +756,19 @@ async def set_time_zone(callback:types.CallbackQuery, state:FSMContext):
                    button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
                    button_antarctida)
     In_buttons.add(button_cancel)
-
-    await callback.message.answer('Выберите часовой пояс', reply_markup=In_buttons)
+    mtu = await callback.message.answer('Выберите часовой пояс', reply_markup=In_buttons)
+    async with state.proxy() as sett:
+        sett['Второе сообщение'] = mtu.message_id
     await callback.answer()
     await FSM_settings.next()
 
 @disp.callback_query_handler(Text(startswith='set'), state=FSM_settings.choise_tz)
 async def set_user_time_zone(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as sett:
-        if sett['Первое сообщение']:
-            await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Первое сообщение'],
+        if sett['Второе сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=sett['id'], message_id=sett['Второе сообщение'],
                                                     reply_markup=None)
-            sett['Первое сообщение'] = False
+            sett['Второе сообщение'] = False
         sett.clear()
     user_id = callback.from_user.id
     name_tz = callback.data.replace('set_', '')      # Вытягиваем название часового пояса
@@ -776,7 +778,10 @@ async def set_user_time_zone(callback:types.CallbackQuery, state:FSMContext):
 
     tz_query = f"UPDATE 'users' SET [time_zone] = '{current_tz}' WHERE [id] = {user_id}"
     if base_query(base=base, cursor=cursor, query=tz_query):
-        await callback.message.answer(f'{wrench}Настройки\nЧасовой пояс: {current_tz}')
+        for country, t_zone in time_zones.items():
+            if t_zone == current_tz:
+                user_count = country.title()
+        await callback.message.answer(f'{wrench}Настройки\nЧасовой пояс: {user_count}')
         await callback.message.answer('Настройки сохранены')
         await state.finish()
     else:
