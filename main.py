@@ -86,8 +86,6 @@ async def reminer_func():
 
 ########################################## СОЗДАНИЕ ###################################################################
 # Функция получения события от пользователя
-# Создание диалога для ввода события пользователем
-# Создаём состояния FSM
 class FSM_event_user(StatesGroup):
     name = State()
     date = State()
@@ -129,22 +127,16 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 # Ловим название события
 @disp.message_handler(state=FSM_event_user.name)
 async def event_name(message: types.Message, state: FSMContext):
-    id_us = message.from_user.id                    # id пользователя
-    # repeat_name() возможно не понадобиться
-    if repeat_name(message.text.lower(), id_us, base=base, cursor=cursor):
-        await FSM_event_user.next()                 # Переход к следующему состоянию машины
-        # Кнопки сегодня и завтра
-        inline_key = InlineKeyboardMarkup()
-        today_butt = InlineKeyboardButton(text=f'Сегодня', callback_data=f'today')
-        tomorrow_butt = InlineKeyboardButton(text=f'Завтра', callback_data=f'tomorrow')
-        inline_key.add(today_butt, tomorrow_butt)
-        # Сообщению пользователю что делать дальше
-        mtu = await rem_bot.send_message(message.chat.id, 'Введите дату в формате ДД.ММ.ГГГГ', reply_markup=inline_key)
-        async with state.proxy() as data:
-            data['Название'] = message.text.lower()   # Получение данных от пользователя в словарь
-            data['Первое сообщение'] = mtu.message_id # Получение id сообщения в словарь
-    else:
-        await message.reply('Такое событие уже есть. Придумайте другое название.')
+
+    inline_key = InlineKeyboardMarkup()
+    today_butt = InlineKeyboardButton(text=f'Сегодня', callback_data=f'today')
+    tomorrow_butt = InlineKeyboardButton(text=f'Завтра', callback_data=f'tomorrow')
+    inline_key.add(today_butt, tomorrow_butt)
+    mtu = await rem_bot.send_message(message.chat.id, 'Введите дату в формате ДД.ММ.ГГГГ', reply_markup=inline_key)
+    async with state.proxy() as data:
+        data['Название'] = message.text.lower()   # Получение данных от пользователя в словарь
+        data['Первое сообщение'] = mtu.message_id # Получение id сообщения в словарь
+    await FSM_event_user.next()  # Переход к следующему состоянию машины
 
 # Ловим дату события ввод пользователем
 @disp.message_handler(state=FSM_event_user.date)
@@ -249,13 +241,13 @@ async def event_time(message: types.Message, state: FSMContext):
             # Проверка корректности отработки функции
             if write_event is not None:
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
-                await state.finish()  # Завершение работы МС
+                await state.finish()
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
-                await state.finish()  # Завершение работы МС
+                await state.finish()
         elif local_time == local_time_now:
             await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
-            await state.finish()  # Завершение работы МС
+            await state.finish()
         else:
             await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
     else:
@@ -466,10 +458,8 @@ async def edit_date(message:types.Message, state:FSMContext):
                 old_time_button = InlineKeyboardButton(text='Оставить прежнее',
                                                    callback_data='time_no_edit')  # Кнопка
                 inline_key.add(old_time_button)
-
                 mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
                 data['Пятое сообщение'] = mtu.message_id
-
                 await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
                 await data.save()
             else:
@@ -590,7 +580,6 @@ async def show_event(message:types.Message, state:FSMContext):
 @disp.callback_query_handler(Text(startswith='ueb'), state=FSM_delete_event.event_keyboard)
 async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     await FSM_delete_event.next()
-    #await FSM_delete_event.event_delete.set()
     id_event = callback.data.replace('ueb', '')                # Вытягиваем локальный id события
     async with state.proxy() as data:
         event = data[id_event]
@@ -613,7 +602,6 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
                    f"AND [id] = '{callback.from_user.id}' AND[id_event] = '{data['Удалить событие с id']}'"
 
     # Само удаление
-    # Если запрос в базу отработал корректно
     if base_query(base=base, cursor=cursor, query=delete_query):
         # Запись в журнале
         time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время

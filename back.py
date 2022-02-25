@@ -3,8 +3,6 @@ import re
 import datetime
 import random
 from string import ascii_lowercase
-import pytz
-
 
 # Функция соединения с БД возвращает объект типа sqlite3 (база и курсор)
 def start_base():
@@ -82,7 +80,6 @@ def check_time(time):
         time_mass = list(time_mass)
         # Проверка на корректные числа
         if 0 <= time_mass[0] <= 23 and 0 <= time_mass[1] <= 59:
-            input_flag = True
             return True, ''
         else:
             return False, f'Числа не корректны, часы от 0 до 23, минуты от 0 до 59.'
@@ -93,13 +90,14 @@ def check_time(time):
 # Функция проверки имени события в базе (повторяющиеся имена)
 # True - норм, не повторяется
 # False - имя уже занято
+"""
 def repeat_name(name_event, id, base, cursor):
     query = f"SELECT * FROM 'event_from_users' WHERE [event] = '{name_event}' AND [id] = {id}"
     if base_query(base=base, cursor=cursor, query=query, mode='search'):
         return False  # Имя уже занято
     else:
         return True   # Имя свободно совпадений нет
-
+"""
 # Функция генерации id события
 def generate_id():
     out = '@' + str(random.randint(1001, 9999)) + random.choice(ascii_lowercase) + '@' + str(random.randint(0, 999))
@@ -156,8 +154,8 @@ def get_time_zone(us_id, base, cursor):
     query = f"SELECT UTC FROM 'users' WHERE [id] = {us_id} "
     answer = base_query(base=base, cursor=cursor, query=query, mode='search')
     return answer[0][0]
-
-# Функция проверки даты, прошла или нет формат UTC
+"""
+# Функция проверки даты, прошла или нет формат UTC ?
 def past_date(date):
     date_now = datetime.datetime.utcnow()
     user_date = datetime.datetime.strptime(date, '%d.%m.%Y %H:%M')
@@ -165,3 +163,4 @@ def past_date(date):
         return False
     else:
         return True
+"""
