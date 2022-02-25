@@ -247,12 +247,15 @@ async def event_time(message: types.Message, state: FSMContext):
             # Проверка корректности отработки функции
             if write_event is not None:
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
+                data.clear()
                 await state.finish()
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
+                data.clear()
                 await state.finish()
         elif local_time == local_time_now:
             await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
+            data.clear()
             await state.finish()
         else:
             await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
@@ -467,7 +470,7 @@ async def edit_date(message:types.Message, state:FSMContext):
                 mtu = await rem_bot.send_message(message.chat.id, 'Введите время в формате: ЧЧ:ММ', reply_markup=inline_key)
                 data['Пятое сообщение'] = mtu.message_id
                 await FSM_edit_event.event_new_time.set()  # Переход к следующему состоянию машины
-                await data.save()
+                #await data.save()
             else:
                 await message.reply('Дата прошла, введите другую')
         else:
@@ -496,9 +499,11 @@ async def no_edit_time(callback:types.CallbackQuery, state:FSMContext):
                                       f"Дата: {data['Дата']}\n"
                                       f"Время: {data['Время']}")
             print('Замена произведена успешно')
+            data.clear()
             await state.finish()
         else:
             print('Ошибка при замене события')
+            data.clear()
             await state.finish()
 
 # Получение нового времени если оно введено
@@ -565,6 +570,7 @@ async def show_event(message:types.Message, state:FSMContext):
     if data_from_query:
         button_mass = []
         async with state.proxy() as data:
+            data['id'] = message.from_user.id
             for line in data_from_query:
                 id_button = line[7]          # Получение id события (записи)
                 button_mass.append(InlineKeyboardButton(text=f'{line[5]}', callback_data=f'ueb{id_button}'))
@@ -574,7 +580,9 @@ async def show_event(message:types.Message, state:FSMContext):
         inline_key = InlineKeyboardMarkup(row_width=2)  # Создание объекта клавиатуры, в ряд 2 кнопки
         inline_key.add(*button_mass)                    # добавление массива кнопок в объект клавиатуры
         inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'))
-        await message.answer('События в кнопках', reply_markup=inline_key)
+        mtu = await message.answer('События в кнопках', reply_markup=inline_key)
+        async with state.proxy() as data:
+            data['Удаление первое сообщение'] = mtu.message_id
     elif data_from_query is None:
         await rem_bot.send_message(message.chat.id, 'Ооп! Ошибочка с базой.')
         print('Ошибка с БД при удалении')
@@ -585,7 +593,12 @@ async def show_event(message:types.Message, state:FSMContext):
 # Подтверждение удаления
 @disp.callback_query_handler(Text(startswith='ueb'), state=FSM_delete_event.event_keyboard)
 async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
-    await FSM_delete_event.next()
+    async with state.proxy() as data:
+        if data['Удаление первое сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Удаление первое сообщение'],
+                                                    reply_markup=None)
+            data['Удаление первое сообщение'] = False
+
     id_event = callback.data.replace('ueb', '')                # Вытягиваем локальный id события
     async with state.proxy() as data:
         event = data[id_event]
@@ -596,13 +609,20 @@ async def confirm_delete(callback:types.CallbackQuery, state:FSMContext):
     inline_key = InlineKeyboardMarkup(row_width=2)
     inline_key.add(InlineKeyboardButton(text='Отмена', callback_data='cancel'),  # Кнопка отмена (работает один на всех хэндлер)
                    InlineKeyboardButton(text='Удалить', callback_data='delete')) # Кнопка удалить
-    await callback.message.answer(f"Событие: {event}\nДата: {date[0][0]}\nВремя: {date[0][1]}", reply_markup=inline_key)
+    mtu = await callback.message.answer(f"Событие: {event}\nДата: {date[0][0]}\nВремя: {date[0][1]}", reply_markup=inline_key)
+    async with state.proxy() as data:
+        data['Удаление второе сообщение'] = mtu.message_id
     await callback.answer()
+    await FSM_delete_event.next()
 
 # Удаление
 @disp.callback_query_handler(Text(startswith='delete'), state=FSM_delete_event.event_delete)
 async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     async with state.proxy() as data:
+        if data['Удаление второе сообщение']:
+            await rem_bot.edit_message_reply_markup(chat_id=data['id'], message_id=data['Удаление второе сообщение'],
+                                                    reply_markup=None)
+            data['Удаление второе сообщение'] = False
         data = data.as_dict()
     delete_query = f"DELETE FROM 'event_from_users' WHERE [event] = '{data['Событие']}' " \
                    f"AND [id] = '{callback.from_user.id}' AND[id_event] = '{data['Удалить событие с id']}'"
