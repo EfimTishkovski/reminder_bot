@@ -27,6 +27,8 @@ disp = Dispatcher(rem_bot, loop=loop, storage=MemoryStorage()) # Добавле�
 # base - объект соединения с базой определяется в start_func при запуске
 # cursor - объект курсор для работы с базой определяется в start_func при запуске
 
+first_exemple_message = True
+
 # Функция начала работы бота, сообщение, запуск в полинге
 async def start_func(_):
     print('Бот запущен')
@@ -103,11 +105,15 @@ async def event_start(message: types.Message, state:FSMContext):
         data['id'] = us_id
         data['time_zone'] = user_utc_zone[0][0]
     # Образец для пользователя
-    await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}ПРИМЕР')
-    await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}'
+    # Дописать вывод этого сообщения только один раз
+    global first_exemple_message
+    if first_exemple_message:
+        await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}ПРИМЕР')
+        await rem_bot.send_message(message.chat.id, f'{heavy_exclamation_mark_symbol}'
                                                 f'Напоминание: Что-то очень важное что никак нельзя забыть.\n' +
                                                 'Дата: Дата когда об этом нужно напомнить.\n' +
                                                 'Время: В какое время напомнить.')
+        first_exemple_message = False
     # Первый запрос
     await rem_bot.send_message(message.chat.id, 'Введите название напоминания')
 
@@ -193,7 +199,7 @@ async def today_date(callback:types.CallbackQuery, state:FSMContext):
             data['Первое сообщение'] = False
         data_now = datetime.now(pytz.timezone(data['time_zone']))
         data_tomorrow = data_now + timedelta(days=1)
-        data['Дата'] = str(data_tomorrow.strftime('%d.%m.%Y'))
+        data['Дата'] = data_tomorrow.strftime('%d.%m.%Y')
     await callback.message.answer('Введите время в формате ЧЧ:ММ')
     await callback.answer()
     await FSM_event_user.next()
@@ -604,7 +610,7 @@ async def delete_event(callback:types.CallbackQuery, state:FSMContext):
     # Само удаление
     if base_query(base=base, cursor=cursor, query=delete_query):
         # Запись в журнале
-        time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
+        time_now = datetime.now().strftime('%Y-%m-%d %H:%M')  # Текущая дата и время
         first_name = callback.from_user.first_name                     # Получение имени пользователя
         user_id = callback.from_user.id                                # Получение id пользователя
         delete_log_query = f"INSERT INTO 'log' ([id], [first_name], [event], [action], [time])" \
@@ -652,6 +658,8 @@ async def welcome(message:types.Message):
             print('Добавлен новый пользователь')
             print(user_info)
     user_info.clear()  # Очистка словаря с данными пользователя
+    global first_exemple_message
+    first_exemple_message = True
 
     # Создание кнопок интерфейса бота
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)  # Создание объекта клавиатура
@@ -739,7 +747,7 @@ async def set_time_zone(callback:types.CallbackQuery, state:FSMContext):
     button_antarctida = InlineKeyboardButton(text=f'{antarctida}Антарктида(Станция Восток) UTC+06:00', callback_data='set_antarctida')
     button_cancel = InlineKeyboardButton(text=f'Отмена', callback_data='cancel')
 
-    In_buttons = InlineKeyboardMarkup(row_width=2)
+    In_buttons = InlineKeyboardMarkup(row_width=1)
     In_buttons.add(button_belerus, button_russia_moskau, button_russia_vladivostok, button_russia_kaliningrad,
                    button_ukraine, button_poland, button_czech_republic, button_italy, button_litva, button_germany,
                    button_antarctida)
