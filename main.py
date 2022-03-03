@@ -247,15 +247,18 @@ async def event_time(message: types.Message, state: FSMContext):
             # Проверка корректности отработки функции
             if write_event is not None:
                 await rem_bot.send_message(message.chat.id, 'Событие добавлено.')
-                data.clear()
+                async with state.proxy() as data:
+                    data.clear()
                 await state.finish()
             else:
                 await rem_bot.send_message(message.chat.id, 'Оп! Что-то с базой не так.')
-                data.clear()
+                async with state.proxy() as data:
+                    data.clear()
                 await state.finish()
         elif local_time == local_time_now:
             await rem_bot.send_message(message.chat.id, 'Это прямо сейчас! Действуй! =)')
-            data.clear()
+            async with state.proxy() as data:
+                data.clear()
             await state.finish()
         else:
             await message.reply('Время прошло, введите время снова ЧЧ:ММ.')
