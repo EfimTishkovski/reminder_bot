@@ -310,12 +310,13 @@ async def edit_events_command(message:types.Message, state:FSMContext):
         print('Ошибка с БД при редактировании события')
 
 # Кнопка отмены редактирования
-@disp.callback_query_handler(Text(startswith='cancel'), state='*') # хэндлер срабатывает по команде /отмена
-async def cancel_handler(callback : types.CallbackQuery, state: FSMContext):
+@disp.callback_query_handler(Text(startswith='cancel'), state='*')  # хэндлер срабатывает по команде /отмена
+async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     current_state = await state.get_state()  # Получаем текущее состояние МС
     # Если МС не задействована, то ничего не происходит
     if current_state is None:
         return
+
     await callback.message.answer('Отменено')  # Вывод пользователю
     await callback.answer()
     await state.finish()
